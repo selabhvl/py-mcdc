@@ -17,14 +17,20 @@ This project aims at generating test cases satisfying modified condition decisio
 
    `sudo yum install python3-devel`
 
+- Install the dependencies:
+   `pip3 install -r requirements.txt`
+  
+<!--
 - Install latest release pyeda version using pip:
 
    `pip3 install pyeda`
 
 - Install pyeda from the repository:
+  
   Clone the pyeda library:
 
   `git clone git://github.com/cjdrake/pyeda.git`
+-->
 
 Build:
 ```
@@ -52,7 +58,7 @@ python3 setup.py install --force --user
     >>> gv.render('Example1', view=True)
     ```
 ## Generating MC/DC test cases from an roBDD
-- Clone the this library:
+- Clone this library:
 
   `git clone https://github.com/selabhvl/py-mcdc.git`
 

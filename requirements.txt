@@ -1,0 +1,7 @@
+graphviz
+matplotlib
+more-itertools
+pandas
+pytest
+sortedcontainers
+pyeda

@@ -39,8 +39,8 @@ tcas = None
 tcas_num_cond = None
 mechanism = None
 
-def satisfy_mcdc(self, heuristic):
-    # type: (BinaryDecisionDiagram) -> (dict, int, list)
+def satisfy_mcdc(f, heuristic):
+    # type: (BinaryDecisionDiagram, callable) -> (dict, int, list)
 
     def equal(bddnode, condition):
         # type: (BDDNode, BDDVariable) -> bool
@@ -160,7 +160,7 @@ def satisfy_mcdc(self, heuristic):
     # Select pair of paths p0/p1 from the BDD
     # test_case, tuple_2_dict = select_paths_bdd(self)
 
-    test_case = select_paths_bdd(self)
+    test_case = select_paths_bdd(f)
 
     # psi = compact_truth_table(test_case, tuple_2_dict)
     # psi[p0] = {a, c}, where tuple_2_dict(p0) = {a: 0, b: None, c: 0}
