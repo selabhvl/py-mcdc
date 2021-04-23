@@ -2,30 +2,29 @@
 This project aims at generating test cases satisfying modified condition decision coverage (MC/DC) criterion based on reduced ordered decision diagrams (roBDDs)
 
 ## Dependencies
-- pyeda library
 - python 3.8 (minimum)
+- pyeda library
 - Graphviz packages
 
 ## Installing Dependencies
+- Install the Python3 "development" package.
 
--Install the Python3 "development" package.
+  For Debian-based systems (eg Ubuntu, Mint):
 
-For Debian-based systems (eg Ubuntu, Mint):
+  `sudo apt-get install python3-dev`
 
-`sudo apt-get install python3-dev`
+  For RedHat-based systems (eg RHEL, Centos):
 
-For RedHat-based systems (eg RHEL, Centos):
-
-`sudo yum install python3-devel`
+   `sudo yum install python3-devel`
 
 - Install latest release pyeda version using pip:
 
- `pip3 install pyeda`
+   `pip3 install pyeda`
 
 - Install pyeda from the repository:
-Clone the pyeda library:
+  Clone the pyeda library:
 
- `git clone git://github.com/cjdrake/pyeda.git`
+  `git clone git://github.com/cjdrake/pyeda.git`
 
 Build:
 ```
@@ -57,21 +56,21 @@ python3 setup.py install --force --user
 
  `git clone https://github.com/selabhvl/py-mcdc.git`
 
-- Run the default (Only 42 permuations): 
-`python3 mcdc_test/pathsearch.py`
-or 
-`python3 mcdc_test/re2.py`
+- Run the default (Only 42 permutations): 
+  `python3 mcdc_test/pathsearch.py`
+  or 
+  `python3 mcdc_test/re2.py`
 
 - Generate MC/DC test cases from the command line
 
-`python3 mcdc_test/pathsearch.py numberofpermutations`
+  `python3 mcdc_test/pathsearch.py numberofpermutations`
 
 or 
 
-`python3 mcdc_test/re2.py numberofpermutations`
-- Example:
+  `python3 mcdc_test/re2.py numberofpermutations`
+- Example for 1000 order permutations:
 
-`python3 mcdc_test/re2.py 42`
+  `python3 mcdc_test/re2.py 1000`
 
 
 
