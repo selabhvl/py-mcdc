@@ -54,7 +54,7 @@ python3 setup.py install --force --user
 ## Generating MC/DC test cases from an roBDD
 - Clone the this library:
 
- `git clone https://github.com/selabhvl/py-mcdc.git`
+  `git clone https://github.com/selabhvl/py-mcdc.git`
 
 - Run the default (Only 42 permutations): 
   `python3 mcdc_test/pathsearch.py`
@@ -65,12 +65,12 @@ python3 setup.py install --force --user
 
   `python3 mcdc_test/pathsearch.py numberofpermutations`
 
-or 
+  or 
 
-  `python3 mcdc_test/re2.py numberofpermutations`
+  `python3 mcdc_test/mcdctestgen.py numberofpermutations`
 - Example for 1000 order permutations:
 
-  `python3 mcdc_test/re2.py 1000`
+  `python3 mcdc_test/mcdctestgen.py 1000`
 
 
 
