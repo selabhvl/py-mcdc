@@ -1,0 +1,33 @@
+# This workflow will install Python dependencies, run tests and lint with a variety of Python versions
+# For more information see: https://help.github.com/actions/language-and-framework-guides/using-python-with-github-actions
+
+name: Run tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+
+    runs-on: self-hosted
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Build
+      run: |
+        python3 -m venv runner-env
+        source runner-env/bin/activate && ( pip3 install -r requirements.txt ; pytest -v mcdc_test/tests_pathsearch.py mcdc_test/testrunner.py )
+        rm -rf runner-env
+
+  build-pathsearch:
+
+    runs-on: self-hosted
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Build
+      run: |
+        python3 -m venv runner-env-standalone
+        source runner-env-standalone/bin/activate && ( pip3 install -r requirements.txt ; pytest -v mcdc_test/tests_pathsearch.py )
+        rm -rf runner-env-standalone
