@@ -1,3 +1,4 @@
+import logging
 import csv
 import matplotlib.pyplot as plt
 from multiprocessing import Pool, Manager
@@ -5,13 +6,13 @@ from math import factorial
 from random import randint, seed
 import sys
 import time
-from pyeda.boolalg.bdd import bddvar, expr2bdd, bdd2expr
+from pyeda.boolalg.bdd import bddvar, expr2bdd, bdd2expr, _iter_all_paths, _path2point, BDDNODEZERO, BDDNODEONE
 from pyeda.boolalg.expr import expr
 from mcdc_helpers import *
 from sortedcontainers import SortedList
 from pyeda.inter import bddvars
 from functools import reduce
-from itertools import permutations, repeat, product
+from itertools import permutations, repeat, product, chain
 
 from vsplot import plot
 import tcasii
@@ -371,7 +372,7 @@ def process_one(arg):
 
 
 def faustins_mechanism(f, h):
-    return f.satisfy_mcdc(h)
+    return satisfy_mcdc(f, h)
 
 
 def run_experiment(_maxRounds, hs, tcas, tcas_num_cond, mechanism):
