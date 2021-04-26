@@ -224,7 +224,7 @@ def calc_reuse(path, test_case):
     return len(list(tcs))
 
 
-def h1(tcs, c, paths_to_zero, paths_to_one):
+def hi_reuse_short_path(tcs, c, paths_to_zero, paths_to_one):
     cartesian_product = product(paths_to_zero, paths_to_one)
 
     # Choose path_zero and path_one that only differs on condition c
@@ -235,7 +235,7 @@ def h1(tcs, c, paths_to_zero, paths_to_one):
             size(path[0]) + size(path[1])))
 
 
-def h2(tcs, c, paths_to_zero, paths_to_one):
+def hi_reuse_long_path(tcs, c, paths_to_zero, paths_to_one):
     cartesian_product = product(paths_to_zero, paths_to_one)
 
     # Choose path_zero and path_one that only differs on condition c
@@ -436,7 +436,7 @@ if __name__ == "__main__":
     #     https://github.com/numpy/numpy/issues/9650#issuecomment-327144993
     seed(RNGseed)
 
-    hs = [h1, h2]
+    hs = [hi_reuse_short_path, hi_reuse_long_path]
     allKeys, plot_data, t_list = run_experiment(maxRounds, hs, tcasii.tcas, tcasii.tcas_num_cond, satisfy_mcdc)
 
     # plot_data and wall_clock_list must have the same length
