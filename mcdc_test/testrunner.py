@@ -1,6 +1,4 @@
-import random
-
-from mcdctestgen import run_experiment, h1, h2, faustins_mechanism
+from mcdctestgen import run_experiment, h1, h2, satisfy_mcdc
 import tcasii
 from tcasii import makeLarge
 import pytest
@@ -22,7 +20,7 @@ def markD(fs, m, ts):
 @pytest.mark.parametrize("fn", markD(set([tcasii.D15, tcasii.D17]), pytest.mark.xfail, zip(tcasii.tcas, tcasii.tcas_num_cond)))
 def test_H1_has_nplus1(fn):
     f, n = fn
-    _, plot_data, _ = run_experiment(20, [h1], [f], [n], faustins_mechanism)
+    _, plot_data, _ = run_experiment(20, [h1], [f], [n], satisfy_mcdc)
     (i, rm) = plot_data[0]
     (lowest, _count) = rm[f][0]
     assert lowest == len(f.inputs)+1
@@ -31,7 +29,7 @@ def test_H1_has_nplus1(fn):
 @pytest.mark.parametrize("fn", markD(set([tcasii.D15, tcasii.D17]), pytest.mark.xfail, zip(tcasii.tcas, tcasii.tcas_num_cond)))
 def test_H2_has_nplus1(fn):
     f, n = fn
-    _, plot_data, _ = run_experiment(40, [h2], [f], [n], faustins_mechanism)
+    _, plot_data, _ = run_experiment(40, [h2], [f], [n], satisfy_mcdc)
     (i, rm) = plot_data[0]
     (lowest, _count) = rm[f][0]
     assert lowest == len(f.inputs)+1
@@ -40,7 +38,7 @@ def test_H2_has_nplus1(fn):
 # Tests below are ignored, mostly for/during debugging:
 def slow_test_H1_D15_has_nplus1():
     f = tcasii.D15
-    _, plot_data, _ = run_experiment(100, [h1], [f], [len(f.inputs)], faustins_mechanism)
+    _, plot_data, _ = run_experiment(100, [h1], [f], [len(f.inputs)], satisfy_mcdc)
     (i, rm) = plot_data[0]
     (lowest, _count) = rm[f][0]
     assert lowest == len(f.inputs)+1
@@ -48,7 +46,7 @@ def slow_test_H1_D15_has_nplus1():
 
 def slow_test_H3_trouble():
     f = makeLarge(tcasii.D15)
-    _, plot_data, _ = run_experiment(2, [h1], [f], [len(f.inputs)], faustins_mechanism)
+    _, plot_data, _ = run_experiment(2, [h1], [f], [len(f.inputs)], satisfy_mcdc)
     (i, rm) = plot_data[0]
     (lowest, _count) = rm[f][0]
     assert lowest == len(f.inputs)+1
