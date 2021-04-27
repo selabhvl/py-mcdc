@@ -92,7 +92,8 @@ def satisfy_mcdc(f, heuristic):
         root = f.node
         bdd_nodes = list(f.dfs_preorder())
 
-        conditions = f.inputs
+        # TODO: could be adjustable.
+        conditions = sorted(f.support, key=lambda c: c.uniqid)
         for c in conditions:
             logger.debug("\n")
             logger.debug("current variable: {0}".format(c))
@@ -223,7 +224,7 @@ def calc_reuse(path, test_case):
     return len(list(tcs))
 
 
-def h1(tcs, c, paths_to_zero, paths_to_one):
+def hi_reuse_short_path(tcs, c, paths_to_zero, paths_to_one):
     cartesian_product = product(paths_to_zero, paths_to_one)
 
     # Choose path_zero and path_one that only differs on condition c
@@ -234,7 +235,7 @@ def h1(tcs, c, paths_to_zero, paths_to_one):
             size(path[0]) + size(path[1])))
 
 
-def h2(tcs, c, paths_to_zero, paths_to_one):
+def hi_reuse_long_path(tcs, c, paths_to_zero, paths_to_one):
     cartesian_product = product(paths_to_zero, paths_to_one)
 
     # Choose path_zero and path_one that only differs on condition c
@@ -371,10 +372,6 @@ def process_one(arg):
     return myKeys, resultMap
 
 
-def faustins_mechanism(f, h):
-    return satisfy_mcdc(f, h)
-
-
 def run_experiment(_maxRounds, hs, tcas, tcas_num_cond, mechanism):
     global maxRounds
     resultMapx = None  # Python doesn't do functional `reduce()` below, but destructive:
@@ -439,8 +436,8 @@ if __name__ == "__main__":
     #     https://github.com/numpy/numpy/issues/9650#issuecomment-327144993
     seed(RNGseed)
 
-    hs = [h1, h2]
-    allKeys, plot_data, t_list = run_experiment(maxRounds, hs, tcasii.tcas, tcasii.tcas_num_cond, faustins_mechanism)
+    hs = [hi_reuse_short_path, hi_reuse_long_path]
+    allKeys, plot_data, t_list = run_experiment(maxRounds, hs, tcasii.tcas, tcasii.tcas_num_cond, satisfy_mcdc)
 
     # plot_data and wall_clock_list must have the same length
     assert len(t_list) == len(plot_data)

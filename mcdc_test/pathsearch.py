@@ -15,9 +15,8 @@ from sortedcontainers import SortedList
 import tcasii
 from vsplot import plot
 from mcdctestgen import run_experiment, calc_reuse
-from testrunner import markD
 from pyeda.boolalg.bdd import _path2point, BDDNODEZERO, BDDNODEONE
-from mcdc_helpers import uniformize, merge, instantiate, unique_tests
+from mcdc_helpers import uniformize, merge, instantiate, unique_tests, size
 
 logger = None  # lazy
 
@@ -255,6 +254,7 @@ class LongestPath:
         # The pool transfers state across all (visited) i-pairs
         #   until `pick_best` is happy. We may then use this info
         #   to reconsider our choice.
+        # Could be a set if we'd bother.
         self.pool = []
 
     def pick_best(self, test_case_pairs, c, pair):
@@ -268,7 +268,7 @@ class LongestPath:
         assert len(self.pool) > 0
         return SortedList(self.pool, key=lambda path: (-calc_reuse(path[0], test_case_pairs) - calc_reuse(path[1], test_case_pairs),
                                                        # highest reuse/longest path
-                                                       -len(path[0]) - len(path[1])
+                                                       -size(path[0]) - size(path[1])
                                                        ))[0]
 
 
@@ -278,7 +278,7 @@ class ShortestPath(LongestPath):
         assert len(self.pool) > 0
         return SortedList(self.pool, key=lambda path: (-calc_reuse(path[0], test_case_pairs) - calc_reuse(path[1], test_case_pairs),
                                                        # highest reuse/longest path
-                                                       len(path[0]) + len(path[1])))[0]
+                                                       size(path[0]) + size(path[1])))[0]
 
 
 class BestReuseOnly(LongestPath):
@@ -294,7 +294,7 @@ class ShortestNoreusePath(LongestPath):
         assert len(self.pool) > 0
         return SortedList(self.pool, key=lambda path: (-calc_reuse(path[0], test_case_pairs) - calc_reuse(path[1], test_case_pairs),
                                                        # highest reuse/longest path
-                                                       len(path[0]) + len(path[1])))[0]
+                                                       size(path[0]) + size(path[1])))[0]
 
 
 def order_path_pair(path_a, path_b, pb):
