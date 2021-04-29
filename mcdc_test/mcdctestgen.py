@@ -321,6 +321,15 @@ def processFP_with_time(args):
     return value
 
 
+def paths_from_pair_is_reused(tcs, pair):
+    """Each path occurs only once, exactly for the pair we're looking at,
+       hence sum of reuse is larger than 2 (1 each).
+    """
+    r0 = calc_reuse(pair[0], tcs)
+    r1 = calc_reuse(pair[1], tcs)
+    return r0 + r1 > 2
+
+
 def processFP(args):
     global mechanism
     i, p, heuristic = args
@@ -334,6 +343,16 @@ def processFP(args):
     is_mcdc = test_mcdc(f2, test_case)
     # print('Round: {0} Number of Conditions: {1} Number of TCs: {2}'.format(RoundN, len(f1.inputs), num_test_cases))
     assert len(f1.inputs) == len(f2.inputs)
+    if num_test_cases > len(f1.inputs)+1:
+        # Check if first condition was ever reused:
+        fs = sorted(f2.inputs, key=lambda c: c.uniqid)
+        first_cond = fs[0]
+        if not paths_from_pair_is_reused(test_case, test_case[first_cond]):
+            tcs_s = [(lrlr(fs, test_case[c][0]), lrlr(fs, test_case[c][1])) for c in fs]
+            # TODO: doesn't really work within MP :-/
+            logger = logging.getLogger(__name__)
+            logger.debug("Failed to reuse root node:\n"+str(i)+'/'+str(num_test_cases)+':'+str(p)+'\n'+str(tcs_s))
+
     if num_test_cases <= len(f1.inputs) or not is_mcdc:
         # inv_map = {v: k for k, v in theMap.items()}
         num_test_cases = -1  # indicate that this set is useless

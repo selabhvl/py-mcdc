@@ -16,6 +16,17 @@ def uniformize(path, conditions):
     return path
 
 
+def lrlr(ordered_conditions, path):
+    """Prints a complete (without `None`) path as a binary string.
+    The name is a pun on Left-Right-Left-Right...
+    """
+    res = ''
+    for c in ordered_conditions:
+        assert path[c] is not None
+        res += '1' if path[c] == 1 else '0'
+    return res
+
+
 def count_none(path):
     # type: (dict) -> int
     # return reduce((lambda acc, k: acc + (1 if path[k] is None else 0)), path, 0)
