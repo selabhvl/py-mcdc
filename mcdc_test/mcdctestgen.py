@@ -6,7 +6,7 @@ from math import factorial
 from random import randint, seed
 import sys
 import time
-from pyeda.boolalg.bdd import bddvar, expr2bdd, bdd2expr, _iter_all_paths, _path2point, BDDNODEZERO, BDDNODEONE
+from pyeda.boolalg.bdd import expr2bdd, bdd2expr, _iter_all_paths, _path2point, BDDNode, BDDNODEZERO, BDDNODEONE, BDDVariable, BinaryDecisionDiagram
 from pyeda.boolalg.expr import expr
 from mcdc_helpers import *
 from sortedcontainers import SortedList
@@ -38,7 +38,15 @@ class bcolors:
 maxRounds = None
 tcas = None
 tcas_num_cond = None
-mechanism = None
+
+
+def no_mechanism(_f, _h):
+    assert False, "MP maybe not initialized correctly?"
+    exit(1)
+
+
+mechanism = no_mechanism
+
 
 def satisfy_mcdc(f, heuristic):
     # type: (BinaryDecisionDiagram, callable) -> (dict, int, list)
@@ -62,7 +70,8 @@ def satisfy_mcdc(f, heuristic):
         # type: (BinaryDecisionDiagram) -> dict
 
         # Logging configuration
-        logger = logging.getLogger(__name__)
+        # TODO: doesn't really work with MP (of course it doesn't) :-/
+        logger = logging.getLogger("MCDC")
         # logger.setLevel(logging.DEBUG)
 
         # set that will store the paths selected from the BDD in tuple format,
