@@ -40,6 +40,7 @@ tcas = None
 tcas_num_cond = None
 
 
+# noinspection PyUnreachableCode
 def no_mechanism(_f, _h):
     assert False, "MP maybe not initialized correctly?"
     exit(1)
