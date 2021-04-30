@@ -17,13 +17,16 @@ def uniformize(path, conditions):
 
 
 def lrlr(ordered_conditions, path):
-    """Prints a complete (without `None`) path as a binary string.
+    """Prints a complete path as a binary string.
     The name is a pun on Left-Right-Left-Right...
     """
     res = ''
     for c in ordered_conditions:
-        assert path[c] is not None
-        res += '1' if path[c] == 1 else '0'
+        if path[c] is None:
+            res += '?'
+        else:
+            assert path[c] in {0, 1}
+            res += str(path[c])
     return res
 
 
