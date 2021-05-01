@@ -17,6 +17,7 @@ from vsplot import plot
 from mcdctestgen import run_experiment, calc_reuse
 from pyeda.boolalg.bdd import _path2point, BDDNODEZERO, BDDNODEONE
 from mcdc_helpers import uniformize, merge, instantiate, unique_tests, size
+import mcdc_helpers
 
 logger = None  # lazy
 
@@ -187,6 +188,7 @@ def independence_day_for_condition(f, v_c, t):
     # Not general enough:
     # assert c_s is not 'c' or (terminal is not BDDNODEZERO or len(suffix_l) == 2)
     # Flip start of suffix:
+    assert len(suffix) > 0
     (cur_c, cur_s), *suffix_rest = suffix
     if cur_s:
         v_c = v_c.lo
@@ -313,6 +315,13 @@ def order_path_pair(path_a, path_b, pb):
     return path_ff, path_tt
 
 
+def get_last_element_in_path(pl):
+    left_x = None
+    for k, v in pl.items():  # TODO: Review -- not sorted?!
+        left_x = k if v is not None else left_x
+    return left_x
+
+
 def run_one_pathsearch(f, reuse_h):
     def _check_monotone(acc, t):
         lt0 = len(t[0])  # t[0]!
@@ -320,9 +329,33 @@ def run_one_pathsearch(f, reuse_h):
         assert res
         return lt0, t
 
+    # gv = Source(f.to_dot())
+    # gv.render('Df', view=True)
     fs = sorted(f.support, key=lambda c: c.uniqid)
+
+    def uniformize(p):
+        return mcdc_helpers.uniformize(_path2point(p), f.inputs)
+
+    def lrlr(p):
+        return mcdc_helpers.lrlr(fs, uniformize(p))
+
+    def make_new_pair(param):
+        new_a, (new_b, _) = param  # Hm...
+        new_a_u = uniformize(new_a)
+        new_b_u = uniformize(new_b)
+
+        if new_a[-1] in {BDDNODEZERO}:
+            assert new_b[-1] in {BDDNODEONE}
+            return new_a_u, new_b_u
+        else:
+            assert new_a[-1] in {BDDNODEONE}
+            assert new_b[-1] in {BDDNODEZERO}
+            return new_b_u, new_a_u
+
     test_case_pairs = dict()
-    for c in fs:
+    open_set = fs.copy()
+    while len(open_set) > 0:
+        c = open_set.pop(0)
         # print('*** Condition:', c)
         ns = bfs_upto_c(f, c)
         # Note that this list can contain multiple paths to the same node.
@@ -336,11 +369,33 @@ def run_one_pathsearch(f, reuse_h):
         # Use a fresh instance for every condition:
         reuse_strategy = reuse_h()
         for (pa, pb) in result:
-            path_a = uniformize(_path2point(pa), f.inputs)
-            path_b = uniformize(_path2point(pb[0]), f.inputs)
+            path_a = uniformize(pa)
+            path_b = uniformize(pb[0])
             assert pa != pb[0]
-            # TODO: unclear why this doesn't work on pa/pb[0]
-            pair = order_path_pair(path_a, path_b, pb)
+            (pl, pr) = order_path_pair(path_a, path_b, pb)
+            pair = (pl, pr)
+            ####
+            (left_p, right_p) = (pa, pb[0]) if ttff(pb[1]) else (pb[0], pa)
+            # TODO: do the same for `right_p`/pr.
+            if len(left_p) > 0:  # No direct leaf of our condition?
+                print(ttff(pb[1]), mcdc_helpers.lrlr(fs, pl), mcdc_helpers.lrlr(fs, pr), file=sys.stderr)
+                assert len(pl) > 0
+                assert left_p[-1] in {BDDNODEZERO, BDDNODEONE}
+                left_v_x = left_p[-2]  # the node
+                left_x = get_last_element_in_path(pl)
+                assert left_x.uniqid == left_v_x.root
+                # print(left_x, left_v_x, file=sys.stderr)
+                if left_x in open_set:  # TODO: generalise
+                    new_pairs = list(map(lambda xpq: (left_p[:-1] + xpq[0], (left_p[:-1] + xpq[1][0], xpq[1][1])),
+                                         pairs_from_node(f, left_v_x)))
+                    # only for printing:
+                    new_pairs_str = list(map(lambda xpq: (lrlr(xpq[0]), lrlr(xpq[1][0])), new_pairs))
+                    print(c, left_x, len(new_pairs), new_pairs_str, file=sys.stderr)
+                    assert len(new_pairs) >= 2  # TODO: filter symmetric pairs
+                    # Can contain several pairs if we're dealing with ???s
+                    open_set.remove(left_x)
+                    test_case_pairs[left_x] = make_new_pair(new_pairs[0])  # TODO: or....
+            ####
             pick = reuse_strategy.pick_best(test_case_pairs, c, pair)
             if pick is not None:
                 test_case_pairs[c] = pair
@@ -369,8 +424,9 @@ if __name__ == "__main__":
     #     https://github.com/numpy/numpy/issues/9650#issuecomment-327144993
     seed(RNGseed)
 
-    hs = [Reuser, LongestPath, ShortestPath, BestReuseOnly]
+    hs = [Reuser]
     # f = tcasii.makeLarge(tcasii.D15)
+    f = tcasii.D3
     # allKeys, plot_data, t_list = run_experiment(maxRounds, hs, [f], [len(f.inputs)], run_one_pathsearch)
     allKeys, plot_data, t_list = run_experiment(maxRounds, hs, tcasii.tcas, tcasii.tcas_num_cond, run_one_pathsearch)
 
