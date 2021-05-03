@@ -316,13 +316,6 @@ def order_path_pair(path_a, path_b, pb):
     return path_ff, path_tt
 
 
-def get_last_element_in_path(pl):
-    left_x = None
-    for k, v in pl.items():  # TODO: Review -- not sorted?!
-        left_x = k if v is not None else left_x
-    return left_x
-
-
 def run_one_pathsearch(f, reuse_h):
     def _check_monotone(acc, t):
         lt0 = len(t[0])  # t[0]!
@@ -341,6 +334,12 @@ def run_one_pathsearch(f, reuse_h):
         return mcdc_helpers.lrlr(fs, uniformize(p))
 
     def get_pairs_from_leaf(p, p_u):
+
+        def get_last_element_in_path(pl):
+            for c in fs[::-1]:
+                if pl[c] is not None:
+                    return c
+            return None
 
         def make_new_pair(param):
             new_a, (new_b, _) = param  # Hm...
@@ -362,15 +361,17 @@ def run_one_pathsearch(f, reuse_h):
             assert len(p_u) > 0
             assert p[-1] in {BDDNODEZERO, BDDNODEONE}
             v_x = p[-2]  # the node
+            if v_x.root == c.uniqid:  # Sorry, our condition was already the leaf.
+                return None, []
             x = get_last_element_in_path(p_u)
-            assert x != c
+            assert x != c  # No, we won't find the current condition again.
             assert x.uniqid == v_x.root
             # print(left_x, left_v_x, file=sys.stderr)
             new_pairs = list(map(lambda xpq: (p[:-1] + xpq[0], (p[:-1] + xpq[1][0], xpq[1][1])),
                                  pairs_from_node(f, v_x)))
             # only for printing:
             new_pairs_str = list(map(lambda xpq: (lrlr(xpq[0]), lrlr(xpq[1][0])), new_pairs))
-            print(c, x, len(new_pairs), new_pairs_str, file=sys.stderr)
+            # print(c, x, len(new_pairs), new_pairs_str, file=sys.stderr)
             assert len(new_pairs) >= 2  # TODO: filter symmetric pairs
             # Can contain several pairs if we're dealing with ???s
             return x, map(make_new_pair, new_pairs)
