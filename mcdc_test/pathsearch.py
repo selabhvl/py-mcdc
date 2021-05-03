@@ -207,6 +207,9 @@ class UseFirst:
     def reconsider_best_of_the_worst(_test_case_pairs):
         return None
 
+    @staticmethod
+    def use_leaves():
+        return True
 
 class Reuser:
     """This class takes the first pair that has any reuse. Worst case is that we don't
@@ -273,6 +276,14 @@ class LongestPath:
                                                        # highest reuse/longest path
                                                        -size(path[0]) - size(path[1])
                                                        ))[0]
+
+    def use_leaves(self):
+        return False
+
+
+class LongestWithLeaves(LongestPath):
+    def use_leaves(self):
+        return True
 
 
 class ShortestPath(LongestPath):
@@ -411,16 +422,17 @@ def run_one_pathsearch(f, reuse_h):
                 # TODO: In the new world-order, this should probably be moved
                 #   INTO the strategy-code so that the number of useful leaves
                 #   can be taken into account there.
-                (updated_l_x, new_pairs) = get_pairs_from_leaf(left_p, pl)
-                if updated_l_x is not None and updated_l_x in open_set:
-                    test_case_pairs[updated_l_x] = list(new_pairs)[0]
-                    open_set.remove(updated_l_x)
-                    # TODO: log
-                updated_l_y = get_pairs_from_leaf(right_p, pr)
-                if updated_l_y is not None and updated_l_y in open_set:
-                    test_case_pairs[updated_l_y] = list(new_pairs)[0]
-                    open_set.remove(updated_l_y)
-                    # TODO: log
+                if reuse_strategy.use_leaves():
+                    (updated_l_x, new_pairs) = get_pairs_from_leaf(left_p, pl)
+                    if updated_l_x is not None and updated_l_x in open_set:
+                        test_case_pairs[updated_l_x] = list(new_pairs)[0]
+                        open_set.remove(updated_l_x)
+                        # TODO: log
+                    updated_l_y = get_pairs_from_leaf(right_p, pr)
+                    if updated_l_y is not None and updated_l_y in open_set:
+                        test_case_pairs[updated_l_y] = list(new_pairs)[0]
+                        open_set.remove(updated_l_y)
+                        # TODO: log
                 break
         # If we didn't find any single "best" i-pair,
         #   you may e.g. pick a random one here.
@@ -428,19 +440,20 @@ def run_one_pathsearch(f, reuse_h):
         if want_reconsider is not None:
             assert not have_picked
             test_case_pairs[c] = want_reconsider
-            # also do the leaf-left/right-dance here.
-            # We have left_p/right_p, but will need to reconstruct the pa/pb component.
-            (pl, pr) = uu_dict[(mcdc_helpers.lrlr(fs, want_reconsider[0]), mcdc_helpers.lrlr(fs, want_reconsider[1]))]
-            (updated_l_x, new_pairs) = get_pairs_from_leaf(pl, want_reconsider[0])
-            if updated_l_x is not None and updated_l_x in open_set:
-                test_case_pairs[updated_l_x] = list(new_pairs)[0]
-                open_set.remove(updated_l_x)
-                # TODO: log
-            updated_l_y = get_pairs_from_leaf(pr, want_reconsider[1])
-            if updated_l_y is not None and updated_l_y in open_set:
-                test_case_pairs[updated_l_y] = list(new_pairs)[0]
-                open_set.remove(updated_l_y)
-                # TODO: log
+            if reuse_strategy.use_leaves():
+                # also do the leaf-left/right-dance here.
+                # We have left_p/right_p, but will need to reconstruct the pa/pb component.
+                (pl, pr) = uu_dict[(mcdc_helpers.lrlr(fs, want_reconsider[0]), mcdc_helpers.lrlr(fs, want_reconsider[1]))]
+                (updated_l_x, new_pairs) = get_pairs_from_leaf(pl, want_reconsider[0])
+                if updated_l_x is not None and updated_l_x in open_set:
+                    test_case_pairs[updated_l_x] = list(new_pairs)[0]
+                    open_set.remove(updated_l_x)
+                    # TODO: log
+                updated_l_y = get_pairs_from_leaf(pr, want_reconsider[1])
+                if updated_l_y is not None and updated_l_y in open_set:
+                    test_case_pairs[updated_l_y] = list(new_pairs)[0]
+                    open_set.remove(updated_l_y)
+                    # TODO: log
 
     assert len(test_case_pairs.keys()) == len(f.inputs), "obvious ({})".format(len(test_case_pairs.keys()))
     # Lifted from bdd.py:
@@ -461,7 +474,7 @@ if __name__ == "__main__":
     #     https://github.com/numpy/numpy/issues/9650#issuecomment-327144993
     seed(RNGseed)
 
-    hs = [Reuser]
+    hs = [LongestPath, LongestWithLeaves]
     # f = tcasii.makeLarge(tcasii.D15)
     f = tcasii.D3
     # allKeys, plot_data, t_list = run_experiment(maxRounds, hs, [f], [len(f.inputs)], run_one_pathsearch)
