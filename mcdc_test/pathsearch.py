@@ -339,18 +339,39 @@ def run_one_pathsearch(f, reuse_h):
     def lrlr(p):
         return mcdc_helpers.lrlr(fs, uniformize(p))
 
-    def make_new_pair(param):
-        new_a, (new_b, _) = param  # Hm...
-        new_a_u = uniformize(new_a)
-        new_b_u = uniformize(new_b)
+    def get_pairs_from_leaf(p, p_u):
 
-        if new_a[-1] in {BDDNODEZERO}:
-            assert new_b[-1] in {BDDNODEONE}
-            return new_a_u, new_b_u
+        def make_new_pair(param):
+            new_a, (new_b, _) = param  # Hm...
+            new_a_u = uniformize(new_a)
+            new_b_u = uniformize(new_b)
+
+            if new_a[-1] in {BDDNODEZERO}:
+                assert new_b[-1] in {BDDNODEONE}
+                return new_a_u, new_b_u
+            else:
+                assert new_a[-1] in {BDDNODEONE}
+                assert new_b[-1] in {BDDNODEZERO}
+                return new_b_u, new_a_u
+
+        if len(p) == 0:  # No direct leaf of our condition?
+            return None, []
         else:
-            assert new_a[-1] in {BDDNODEONE}
-            assert new_b[-1] in {BDDNODEZERO}
-            return new_b_u, new_a_u
+            # Don't try heavy lifting here; we don't know if `v_x` is open or closed yet.
+            assert len(p_u) > 0
+            assert p[-1] in {BDDNODEZERO, BDDNODEONE}
+            v_x = p[-2]  # the node
+            x = get_last_element_in_path(p_u)
+            assert x.uniqid == v_x.root
+            # print(left_x, left_v_x, file=sys.stderr)
+            new_pairs = list(map(lambda xpq: (p[:-1] + xpq[0], (p[:-1] + xpq[1][0], xpq[1][1])),
+                                 pairs_from_node(f, v_x)))
+            # only for printing:
+            new_pairs_str = list(map(lambda xpq: (lrlr(xpq[0]), lrlr(xpq[1][0])), new_pairs))
+            print(c, x, len(new_pairs), new_pairs_str, file=sys.stderr)
+            assert len(new_pairs) >= 2  # TODO: filter symmetric pairs
+            # Can contain several pairs if we're dealing with ???s
+            return x, map(make_new_pair, new_pairs)
 
     test_case_pairs = dict()
     open_set = fs.copy()
@@ -368,43 +389,38 @@ def run_one_pathsearch(f, reuse_h):
                                          pairs_from_node(f, v_c)) for _, (prefix, v_c) in checked_ns)
         # Use a fresh instance for every condition:
         reuse_strategy = reuse_h()
+        have_picked = False
         for (pa, pb) in result:
             path_a = uniformize(pa)
             path_b = uniformize(pb[0])
             assert pa != pb[0]
             (pl, pr) = order_path_pair(path_a, path_b, pb)
             pair = (pl, pr)
-            ####
-            (left_p, right_p) = (pa, pb[0]) if ttff(pb[1]) else (pb[0], pa)
-            # TODO: do the same for `right_p`/pr.
-            if len(left_p) > 0:  # No direct leaf of our condition?
-                print(ttff(pb[1]), mcdc_helpers.lrlr(fs, pl), mcdc_helpers.lrlr(fs, pr), file=sys.stderr)
-                assert len(pl) > 0
-                assert left_p[-1] in {BDDNODEZERO, BDDNODEONE}
-                left_v_x = left_p[-2]  # the node
-                left_x = get_last_element_in_path(pl)
-                assert left_x.uniqid == left_v_x.root
-                # print(left_x, left_v_x, file=sys.stderr)
-                if left_x in open_set:  # TODO: generalise
-                    new_pairs = list(map(lambda xpq: (left_p[:-1] + xpq[0], (left_p[:-1] + xpq[1][0], xpq[1][1])),
-                                         pairs_from_node(f, left_v_x)))
-                    # only for printing:
-                    new_pairs_str = list(map(lambda xpq: (lrlr(xpq[0]), lrlr(xpq[1][0])), new_pairs))
-                    print(c, left_x, len(new_pairs), new_pairs_str, file=sys.stderr)
-                    assert len(new_pairs) >= 2  # TODO: filter symmetric pairs
-                    # Can contain several pairs if we're dealing with ???s
-                    open_set.remove(left_x)
-                    test_case_pairs[left_x] = make_new_pair(new_pairs[0])  # TODO: or....
-            ####
             pick = reuse_strategy.pick_best(test_case_pairs, c, pair)
             if pick is not None:
+                have_picked = True
                 test_case_pairs[c] = pair
+                (left_p, right_p) = (pa, pb[0]) if ttff(pb[1]) else (pb[0], pa)
+                (updated_l_x, new_pairs) = get_pairs_from_leaf(left_p, pl)
+                if updated_l_x is not None and updated_l_x in open_set:
+                    test_case_pairs[updated_l_x] = list(new_pairs)[0]
+                    open_set.remove(updated_l_x)
+                    # TODO: log
+                updated_l_y = get_pairs_from_leaf(right_p, pr)
+                if updated_l_y is not None and updated_l_y in open_set:
+                    test_case_pairs[updated_l_y] = list(new_pairs)[0]
+                    open_set.remove(updated_l_y)
+                    # TODO: log
                 break
         # If we didn't find any single "best" i-pair,
         #   you may e.g. pick a random one here.
         want_reconsider = reuse_strategy.reconsider_best_of_the_worst(test_case_pairs)
         if want_reconsider is not None:
+            assert not have_picked
             test_case_pairs[c] = want_reconsider
+            # XXX: also do the leaf-left/right-dance here.
+            # We have left_p/right_p, but will need to reconstruct the pa/pb component.
+
     assert len(test_case_pairs.keys()) == len(f.inputs), "obvious ({})".format(len(test_case_pairs.keys()))
     # Lifted from bdd.py:
     test_case = instantiate(test_case_pairs)
