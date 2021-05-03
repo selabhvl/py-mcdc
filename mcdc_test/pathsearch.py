@@ -209,6 +209,9 @@ class UseFirst:
 
 
 class Reuser:
+    """This class takes the first pair that has any reuse. Worst case is that we don't
+    have any, in which case you get some pair that we have looked at.
+    Make special provision for the root node and take the first pair we find."""
     def __init__(self):
         # The pool transfers state across all (visited) i-pairs
         #   until `pick_best` is happy. We may then use this info
@@ -220,8 +223,6 @@ class Reuser:
         path_ff, path_tt = pair
         if len(test_case_pairs) == 0:
             # Don't bother if we're in the first round.
-            # TODO: This is so boring and we could run through `calc_reuse()`
-            #         below nonetheless...
             assert self.pool == []
             return pair  # if you just want the first
             # A different approach might want to consider throwing ALL
