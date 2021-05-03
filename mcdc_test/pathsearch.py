@@ -365,7 +365,8 @@ def run_one_pathsearch(f, reuse_h):
                 return None, []
             x = get_last_element_in_path(p_u)
             assert x != c  # No, we won't find the current condition again.
-            assert x.uniqid == v_x.root
+            res = [y for y in fs if y.uniqid == v_x.root]
+            assert x.uniqid == v_x.root, (c, x, res)
             # print(left_x, left_v_x, file=sys.stderr)
             new_pairs = list(map(lambda xpq: (p[:-1] + xpq[0], (p[:-1] + xpq[1][0], xpq[1][1])),
                                  pairs_from_node(f, v_x)))
@@ -392,6 +393,7 @@ def run_one_pathsearch(f, reuse_h):
                                          pairs_from_node(f, v_c)) for _, (prefix, v_c) in checked_ns)
         # Use a fresh instance for every condition:
         reuse_strategy = reuse_h()
+        uu_dict = {}
         have_picked = False
         for (pa, pb) in result:
             path_a = uniformize(pa)
@@ -399,11 +401,16 @@ def run_one_pathsearch(f, reuse_h):
             assert pa != pb[0]
             (pl, pr) = order_path_pair(path_a, path_b, pb)
             pair = (pl, pr)
+            (left_p, right_p) = (pa, pb[0]) if ttff(pb[1]) else (pb[0], pa)
             pick = reuse_strategy.pick_best(test_case_pairs, c, pair)
-            if pick is not None:
+            if pick is None:
+                uu_dict[(mcdc_helpers.lrlr(fs, pl), mcdc_helpers.lrlr(fs, pr))] = (left_p, right_p)
+            else:
                 have_picked = True
                 test_case_pairs[c] = pair
-                (left_p, right_p) = (pa, pb[0]) if ttff(pb[1]) else (pb[0], pa)
+                # TODO: In the new world-order, this should probably be moved
+                #   INTO the strategy-code so that the number of useful leaves
+                #   can be taken into account there.
                 (updated_l_x, new_pairs) = get_pairs_from_leaf(left_p, pl)
                 if updated_l_x is not None and updated_l_x in open_set:
                     test_case_pairs[updated_l_x] = list(new_pairs)[0]
@@ -421,8 +428,19 @@ def run_one_pathsearch(f, reuse_h):
         if want_reconsider is not None:
             assert not have_picked
             test_case_pairs[c] = want_reconsider
-            # XXX: also do the leaf-left/right-dance here.
+            # also do the leaf-left/right-dance here.
             # We have left_p/right_p, but will need to reconstruct the pa/pb component.
+            (pl, pr) = uu_dict[(mcdc_helpers.lrlr(fs, want_reconsider[0]), mcdc_helpers.lrlr(fs, want_reconsider[1]))]
+            (updated_l_x, new_pairs) = get_pairs_from_leaf(pl, want_reconsider[0])
+            if updated_l_x is not None and updated_l_x in open_set:
+                test_case_pairs[updated_l_x] = list(new_pairs)[0]
+                open_set.remove(updated_l_x)
+                # TODO: log
+            updated_l_y = get_pairs_from_leaf(pr, want_reconsider[1])
+            if updated_l_y is not None and updated_l_y in open_set:
+                test_case_pairs[updated_l_y] = list(new_pairs)[0]
+                open_set.remove(updated_l_y)
+                # TODO: log
 
     assert len(test_case_pairs.keys()) == len(f.inputs), "obvious ({})".format(len(test_case_pairs.keys()))
     # Lifted from bdd.py:
