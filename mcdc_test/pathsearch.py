@@ -211,6 +211,7 @@ class UseFirst:
     def use_leaves():
         return True
 
+
 class Reuser:
     """This class takes the first pair that has any reuse. Worst case is that we don't
     have any, in which case you get some pair that we have looked at.
@@ -253,6 +254,9 @@ class Reuser:
             i = 0  # TODO: switch for determinism
             return self.pool[i]
         return None
+
+    def use_leaves(self):
+        return False
 
 
 class LongestPath:
