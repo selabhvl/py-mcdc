@@ -362,6 +362,7 @@ def run_one_pathsearch(f, reuse_h):
             assert p[-1] in {BDDNODEZERO, BDDNODEONE}
             v_x = p[-2]  # the node
             x = get_last_element_in_path(p_u)
+            assert x != c
             assert x.uniqid == v_x.root
             # print(left_x, left_v_x, file=sys.stderr)
             new_pairs = list(map(lambda xpq: (p[:-1] + xpq[0], (p[:-1] + xpq[1][0], xpq[1][1])),
