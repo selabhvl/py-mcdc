@@ -197,6 +197,9 @@ def independence_day_for_condition(f, v_c, t):
 
 
 class UseFirst:
+    def __init__(self, c):
+        pass
+
     @staticmethod
     def pick_best(test_case_pairs, c, pair):
         return pair
@@ -210,14 +213,17 @@ class Reuser:
     """This class takes the first pair that has any reuse. Worst case is that we don't
     have any, in which case you get some pair that we have looked at.
     Make special provision for the root node and take the first pair we find."""
-    def __init__(self):
+    def __init__(self, c):
         # The pool transfers state across all (visited) i-pairs
         #   until `pick_best` is happy. We may then use this info
         #   to reconsider our choice.
         self.pool = []
+        self.c = c
 
-    def pick_best(self, test_case_pairs, c, pair):
-        # None: keep on looking; otherwise return with `pair`.
+    def pick_best(self, test_case_pairs, _c, pair):
+        """None: keep on looking; otherwise return with `pair`.
+        We give you the chance to path in *some* *other* condition `c`
+        if that's useful to you."""
         path_ff, path_tt = pair
         if len(test_case_pairs) == 0:
             # Don't bother if we're in the first round.
@@ -251,12 +257,13 @@ class Reuser:
 
 
 class LongestPath:
-    def __init__(self):
+    def __init__(self, c):
         # The pool transfers state across all (visited) i-pairs
         #   until `pick_best` is happy. We may then use this info
         #   to reconsider our choice.
         # Could be a set if we'd bother.
         self.pool = []
+        self.c = c
 
     def pick_best(self, test_case_pairs, c, pair):
         # True: don't look for another, False: keep on looking.
@@ -335,7 +342,7 @@ def run_one_pathsearch(f, reuse_h):
         result = chain.from_iterable(map(lambda xpq: (prefix + xpq[0], (prefix + xpq[1][0], xpq[1][1])),
                                          pairs_from_node(f, v_c)) for _, (prefix, v_c) in checked_ns)
         # Use a fresh instance for every condition:
-        reuse_strategy = reuse_h()
+        reuse_strategy = reuse_h(c)
         for (pa, pb) in result:
             path_a = uniformize(_path2point(pa), f.inputs)
             path_b = uniformize(_path2point(pb[0]), f.inputs)
