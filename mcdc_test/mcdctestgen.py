@@ -234,6 +234,13 @@ def calc_reuse(path, test_case):
     return len(list(tcs))
 
 
+def calc_may_reuse(path, test_case):
+    # for p in test_case.values():
+    #   print("reuse:\t{0}".format(p))
+    tcs = (p for p in test_case.values() if merge_Maybe(path, p[0]) is not None or merge_Maybe(path, p[1]) is not None)
+    return len(list(tcs))
+
+
 def hi_reuse_short_path(tcs, c, paths_to_zero, paths_to_one):
     cartesian_product = product(paths_to_zero, paths_to_one)
 

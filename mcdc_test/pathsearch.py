@@ -14,9 +14,9 @@ from sortedcontainers import SortedList
 
 import tcasii
 from vsplot import plot
-from mcdctestgen import run_experiment, calc_reuse
+from mcdctestgen import run_experiment, calc_reuse, calc_may_reuse
 from pyeda.boolalg.bdd import _path2point, BDDNODEZERO, BDDNODEONE
-from mcdc_helpers import uniformize, merge, instantiate, unique_tests, size
+from mcdc_helpers import uniformize, merge, instantiate, unique_tests, size, merge_Maybe_except_c
 
 logger = None  # lazy
 
@@ -274,10 +274,48 @@ class LongestPath:
 
     def reconsider_best_of_the_worst(self, test_case_pairs):
         assert len(self.pool) > 0
-        return SortedList(self.pool, key=lambda path: (-calc_reuse(path[0], test_case_pairs) - calc_reuse(path[1], test_case_pairs),
+        el = SortedList(self.pool, key=lambda path: (-calc_reuse(path[0], test_case_pairs) - calc_reuse(path[1], test_case_pairs),
                                                        # highest reuse/longest path
                                                        -size(path[0]) - size(path[1])
                                                        ))[0]
+        return el
+
+
+class LongestMerge(LongestPath):
+    def reconsider_best_of_the_worst(self, test_case_pairs):
+        assert len(self.pool) > 0
+        el = SortedList(self.pool, key=lambda path: (-calc_reuse(path[0], test_case_pairs) - calc_reuse(path[1], test_case_pairs),
+                                                       # highest reuse/longest path
+                                                       -size(path[0]) - size(path[1])
+                                                       ))[0]
+        merged = (merge_Maybe_except_c(self.c, el[0], el[1]), merge_Maybe_except_c(self.c, el[1], el[0]))
+        assert merged[0] is not None
+        assert merged[1] is not None
+        return merged
+
+
+class LongestMayMerge(LongestPath):
+    def reconsider_best_of_the_worst(self, test_case_pairs):
+        assert len(self.pool) > 0
+        el = SortedList(self.pool, key=lambda path: (-calc_may_reuse(path[0], test_case_pairs) - calc_may_reuse(path[1], test_case_pairs),
+                                                       # highest reuse/longest path
+                                                       -size(path[0]) - size(path[1])
+                                                       ))[0]
+        merged = (merge_Maybe_except_c(self.c, el[0], el[1]), merge_Maybe_except_c(self.c, el[1], el[0]))
+        assert merged[0] is not None
+        assert merged[1] is not None
+        return merged
+
+
+class ShortestPathMerge(LongestPath):
+
+    def reconsider_best_of_the_worst(self, test_case_pairs):
+        assert len(self.pool) > 0
+        el = SortedList(self.pool, key=lambda path: (size(path[0]) + size(path[1]),
+            -calc_may_reuse(path[0], test_case_pairs) - calc_may_reuse(path[1], test_case_pairs)
+                                                       ))[0]
+        merged = (merge_Maybe_except_c(self.c, el[0], el[1]), merge_Maybe_except_c(self.c, el[1], el[0]))
+        return merged
 
 
 class ShortestPath(LongestPath):
@@ -377,7 +415,7 @@ if __name__ == "__main__":
     #     https://github.com/numpy/numpy/issues/9650#issuecomment-327144993
     seed(RNGseed)
 
-    hs = [Reuser, LongestPath, ShortestPath, BestReuseOnly]
+    hs = [LongestPath, LongestMerge, LongestMayMerge]
     # f = tcasii.makeLarge(tcasii.D15)
     # allKeys, plot_data, t_list = run_experiment(maxRounds, hs, [f], [len(f.inputs)], run_one_pathsearch)
     allKeys, plot_data, t_list = run_experiment(maxRounds, hs, tcasii.tcas, tcasii.tcas_num_cond, run_one_pathsearch)
@@ -389,7 +427,7 @@ if __name__ == "__main__":
     # Probably we could sneak in a callback again if we really need it.
     for (hi, resultMap), t in zip(plot_data, t_list):
         # Gnuplot:
-        chart_name = 'VS-{}.{}-{}'.format(hs[hi]().__class__.__name__, RNGseed, maxRounds)
+        chart_name = 'VS-{}.{}-{}'.format(hs[hi](None).__class__.__name__, RNGseed, maxRounds)
 
         with open('{}_resultMap.csv'.format(chart_name), 'w') as csvfile:
             result_map_writer = csv.writer(csvfile, delimiter=' ', quotechar='|', quoting=csv.QUOTE_MINIMAL)

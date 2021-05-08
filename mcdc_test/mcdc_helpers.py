@@ -134,13 +134,17 @@ def merge(path_1, path_2):
 
 
 # Merges two paths if permitted (= unification), None otherwise.
-def merge_Maybe(path_1, path_2):
+def merge_Maybe_except_c(c_excl, path_1, path_2):
     # type: (dict, dict) -> dict
     # have_same_keys_assert(path_1,path_2)
     # print("merge:\t{0}".format(path_2))
     path_out = dict()
     conditions = path_1.keys()
     for c in conditions:
+        if c == c_excl:
+            # Let's not look at this one.
+            path_out[c] = path_1[c]
+            continue
         if (path_1[c] is None) and (path_2[c] is not None):
             path_out[c] = path_2[c]
         elif (path_1[c] is not None) and (path_2[c] is None):
@@ -153,6 +157,10 @@ def merge_Maybe(path_1, path_2):
             assert path_1[c] == path_2[c]
             path_out[c] = path_1[c]
     return path_out
+
+
+def merge_Maybe(path_1, path_2):
+    return merge_Maybe_except_c(None, path_1, path_2)
 
 
 def unique_tests(test_case):
