@@ -152,9 +152,9 @@ def satisfy_mcdc(f, heuristic):
                 (path_zero, path_one) = fcp_list[0]
 
                 # Assign test cases path_zero and path_one to condition c
-                # test_case[c] = (path_zero, path_one)
                 p0, p1 = dict(path_zero), dict(path_one)
-                # merge(p0,p1)
+                # TODO: seems to be missing a merge here; needs a variation on
+                #  p0 = merge(p0,p1), p1 = merge(p1,p0)
                 test_case[c] = (p0, p1)
                 logger.debug("test_case[{0}] = ({1})".format(c, test_case[c]))
 
@@ -259,6 +259,17 @@ def hi_reuse_long_path(tcs, c, paths_to_zero, paths_to_one):
     paths = ((path_zero, path_one) for (path_zero, path_one) in cartesian_product
              if xor(path_zero, path_one, c))
     return SortedList(paths, key=lambda path: (-calc_reuse(path[0], tcs) - calc_reuse(path[1], tcs),
+                                               # highest reuse/longest path
+                                               -size(path[0]) - size(path[1])))
+
+
+def hi_reuse_long_merged_path(tcs, c, paths_to_zero, paths_to_one):
+    cartesian_product = product(paths_to_zero, paths_to_one)
+
+    # Choose path_zero and path_one that only differs on condition c
+    paths = ((path_zero, path_one) for (path_zero, path_one) in cartesian_product
+             if xor(path_zero, path_one, c))
+    return SortedList(paths, key=lambda path: (-calc_may_reuse(path[0], tcs) - calc_may_reuse(path[1], tcs),
                                                # highest reuse/longest path
                                                -size(path[0]) - size(path[1])))
 
