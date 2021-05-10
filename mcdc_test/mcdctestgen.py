@@ -12,7 +12,7 @@ from mcdc_helpers import *
 from sortedcontainers import SortedList
 from pyeda.inter import bddvars
 from functools import reduce
-from itertools import permutations, repeat, product, chain
+from itertools import permutations, repeat, product, chain, tee
 
 from vsplot import plot
 import tcasii
@@ -123,16 +123,11 @@ def satisfy_mcdc(f, heuristic):
             #     paths_to_one += path_via_node(root, vc, BDDNODEONE, conditions)
 
             # WARNING: iterators are exhausted once they are read
-            paths_to_zero = chain.from_iterable(path_via_node(root, vc, BDDNODEZERO, conditions) for vc in c_nodes)
-            paths_to_one = chain.from_iterable(path_via_node(root, vc, BDDNODEONE, conditions) for vc in c_nodes)
+            paths_to_zero, paths_to_zero_log = tee(chain.from_iterable(path_via_node(root, vc, BDDNODEZERO, conditions) for vc in c_nodes))
+            paths_to_one, paths_to_one_log = tee(chain.from_iterable(path_via_node(root, vc, BDDNODEONE, conditions) for vc in c_nodes))
 
-            # TODO: If code breaks, indent code from here
-            logger.debug("paths_to_zero:\t{0}".format(paths_to_zero))
-            logger.debug("paths_to_one:\t{0}".format(paths_to_one))
-
-            # Refresh the iterators
-            paths_to_zero = chain.from_iterable(path_via_node(root, vc, BDDNODEZERO, conditions) for vc in c_nodes)
-            paths_to_one = chain.from_iterable(path_via_node(root, vc, BDDNODEONE, conditions) for vc in c_nodes)
+            logger.debug("paths_to_zero:\t{0}".format(paths_to_zero_log))
+            logger.debug("paths_to_one:\t{0}".format(paths_to_one_log))
 
             # paths_to_zero = {P0, P1}, and
             # paths_to_one = {P2, P3} with
