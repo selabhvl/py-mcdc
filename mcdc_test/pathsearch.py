@@ -5,7 +5,7 @@ import logging
 import sys
 import functools
 from functools import reduce
-from itertools import chain, product, repeat, accumulate
+from itertools import chain, product, repeat, accumulate, takewhile
 from random import randint, seed
 
 from graphviz import Source
@@ -209,6 +209,13 @@ class UseFirst:
         return None
 
 
+def merge_ipair(c, pq):
+    merged = (merge_Maybe_except_c(c, pq[0], pq[1]), merge_Maybe_except_c(c, pq[1], pq[0]))
+    assert merged[0] is not None
+    assert merged[1] is not None
+    return merged
+
+
 class Reuser:
     """This class takes the first pair that has any reuse. Worst case is that we don't
     have any, in which case you get some pair that we have looked at.
@@ -228,15 +235,15 @@ class Reuser:
         if len(test_case_pairs) == 0:
             # Don't bother if we're in the first round.
             assert self.pool == []
-            return pair  # if you just want the first
+            return merge_ipair(self.c, pair)  # if you just want the first
             # A different approach might want to consider throwing ALL
             #    initial pairs up to a given depths into the pool.
         else:
-            cr_tt = calc_reuse(path_tt, test_case_pairs)
-            cr_ff = calc_reuse(path_ff, test_case_pairs)
+            cr_tt = calc_may_reuse(path_tt, test_case_pairs)
+            cr_ff = calc_may_reuse(path_ff, test_case_pairs)
             if cr_tt + cr_ff > 0:
                 self.pool = []
-                return pair
+                return merge_ipair(self.c, pair)
             else:
                 # Let's look for a better match.
                 # Since we don't know if we find one,
@@ -252,7 +259,7 @@ class Reuser:
             #  or whatever.
             # i = randint(0, len(self.pool) - 1)
             i = 0  # TODO: switch for determinism
-            return self.pool[i]
+            return merge_ipair(self.c, self.pool[i])
         return None
 
 
@@ -274,24 +281,60 @@ class LongestPath:
 
     def reconsider_best_of_the_worst(self, test_case_pairs):
         assert len(self.pool) > 0
-        el = SortedList(self.pool, key=lambda path: (-calc_reuse(path[0], test_case_pairs) - calc_reuse(path[1], test_case_pairs),
-                                                       # highest reuse/longest path
-                                                       -size(path[0]) - size(path[1])
-                                                       ))[0]
-        return el
+
+        def pred(path):
+            return (-calc_reuse(path[0], test_case_pairs) - calc_reuse(path[1], test_case_pairs),
+                                                       -size(path[0]) - size(path[1]))
+        el = get_rand_from_first_bucket(self.pool, pred)
+        return el  # XXX: not yet merging here on purpose.
+
+
+def get_rand_from_first_bucket(it, pred):
+    ell = SortedList(it, key=pred)  # TODO: partition() instead?
+    minim = pred(ell[0])
+    first_bucket = list(takewhile(lambda path: pred(path) == minim, ell))
+    i = randint(0, len(first_bucket) - 1)
+    return ell[i]
 
 
 class LongestMerge(LongestPath):
+    """The problem with LongestPath is that it builds a pair where e.g. the 2nd component still contains `?'
+        which are not actually free, since they are bound in the partner to a concrete values. Correspondingly,
+        future computations of `calc_reuse()` will be inflated wrt. what we will actually find in the final set of TCs.
+        So here we merge before adding a pair.
+
+        Q: what about length, we're still tallying length after before merging. """
+    def reconsider_best_of_the_worst(self, test_case_pairs):
+        el = super().reconsider_best_of_the_worst(test_case_pairs)
+        return merge_ipair(self.c, el)
+
+
+class LongestSomeReuse(LongestMerge):
+    """Just check if reuse y/n, don't sort by this value. It is still unclear why saying
+           > Oh I can reuse this path a 5th time!
+        in e.g. the Longest-approaches should be a useful prediction about its usefulness in the future.
+        In fact, this might exactly REMOVE the possibility to pick a "better" path that will contribute to
+        novel reuse in the future.
+        TODO/caveat: no randomization, we just do [0] again.
+    """
+
     def reconsider_best_of_the_worst(self, test_case_pairs):
         assert len(self.pool) > 0
-        el = SortedList(self.pool, key=lambda path: (-calc_reuse(path[0], test_case_pairs) - calc_reuse(path[1], test_case_pairs),
-                                                       # highest reuse/longest path
+
+        def pred(path):
+            return calc_reuse(path[0], test_case_pairs) > 0 or calc_reuse(path[1], test_case_pairs) > 0
+        ell = list(filter(pred, self.pool))
+        if len(ell) == 0:
+            ell = self.pool
+        ell = SortedList(ell, key=lambda path: ( # TODO: Veeeery much flexibility here now?
+                                                       # some reuse/longest path
                                                        -size(path[0]) - size(path[1])
-                                                       ))[0]
-        merged = (merge_Maybe_except_c(self.c, el[0], el[1]), merge_Maybe_except_c(self.c, el[1], el[0]))
-        assert merged[0] is not None
-        assert merged[1] is not None
-        return merged
+                                                       ))
+        minim = -size(ell[0][0]) - size(ell[0][1])
+        ell = list(itertools.takewhile(lambda path: minim == -size(path[0]) - size(path[1]), ell))
+        i = randint(0, len(ell) - 1)
+        el = ell[i]
+        return merge_ipair(self.c, el)
 
 
 class LongestMayMerge(LongestPath):
@@ -301,10 +344,7 @@ class LongestMayMerge(LongestPath):
                                                        # highest reuse/longest path
                                                        -size(path[0]) - size(path[1])
                                                        ))[0]
-        merged = (merge_Maybe_except_c(self.c, el[0], el[1]), merge_Maybe_except_c(self.c, el[1], el[0]))
-        assert merged[0] is not None
-        assert merged[1] is not None
-        return merged
+        return merge_ipair(self.c, el)
 
 
 class ShortestPathMerge(LongestPath):
@@ -314,17 +354,17 @@ class ShortestPathMerge(LongestPath):
         el = SortedList(self.pool, key=lambda path: (size(path[0]) + size(path[1]),
             -calc_may_reuse(path[0], test_case_pairs) - calc_may_reuse(path[1], test_case_pairs)
                                                        ))[0]
-        merged = (merge_Maybe_except_c(self.c, el[0], el[1]), merge_Maybe_except_c(self.c, el[1], el[0]))
-        return merged
+        return merge_ipair(self.c, el)
 
 
 class ShortestPath(LongestPath):
 
     def reconsider_best_of_the_worst(self, test_case_pairs):
         assert len(self.pool) > 0
-        return SortedList(self.pool, key=lambda path: (-calc_reuse(path[0], test_case_pairs) - calc_reuse(path[1], test_case_pairs),
+        el = SortedList(self.pool, key=lambda path: (-calc_reuse(path[0], test_case_pairs) - calc_reuse(path[1], test_case_pairs),
                                                        # highest reuse/longest path
                                                        size(path[0]) + size(path[1])))[0]
+        return merge_ipair(self.c, el)
 
 
 class BestReuseOnly(LongestPath):
@@ -415,7 +455,7 @@ if __name__ == "__main__":
     #     https://github.com/numpy/numpy/issues/9650#issuecomment-327144993
     seed(RNGseed)
 
-    hs = [LongestPath, LongestMerge, LongestMayMerge]
+    hs = [LongestPath, ShortestPath, LongestSomeReuse, LongestMerge]
     # f = tcasii.makeLarge(tcasii.D15)
     # allKeys, plot_data, t_list = run_experiment(maxRounds, hs, [f], [len(f.inputs)], run_one_pathsearch)
     allKeys, plot_data, t_list = run_experiment(maxRounds, hs, tcasii.tcas, tcasii.tcas_num_cond, run_one_pathsearch)
