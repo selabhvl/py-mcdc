@@ -361,8 +361,8 @@ def order_path_pair(path_a, path_b, pb):
 
 def find_existing_candidates(c, test_case_pairs):
     # Get a unique instance for each test case that we have generated until now
-    test_cases_to_false = set(p0 for (p0, _) in test_case_pairs.values())
-    test_cases_to_true = set(p1 for (_, p1) in test_case_pairs.values())
+    test_cases_to_false = [p0 for (p0, _) in test_case_pairs.values()]
+    test_cases_to_true = [p1 for (_, p1) in test_case_pairs.values()]
     for tc_f in test_cases_to_false:
         # tc_f[c] = 0/1 or None
         if tc_f[c] is not None:
