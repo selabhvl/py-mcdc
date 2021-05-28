@@ -359,6 +359,24 @@ def order_path_pair(path_a, path_b, pb):
     return path_ff, path_tt
 
 
+def find_existing_candidates(c, test_case_pairs):
+    # Get a unique instance for each test case that we have generated until now
+    test_cases_to_false = set(p0 for (p0, _) in test_case_pairs.values())
+    test_cases_to_true = set(p1 for (_, p1) in test_case_pairs.values())
+    for tc_f in test_cases_to_false:
+        # tc_f[c] = 0/1 or None
+        if tc_f[c] is not None:
+            # Clone current test case
+            tc_t = tc_f.copy()
+            # Negate the current value for condition 'c' using (+ 1 % 2)
+            tc_t[c] = (tc_t[c] + 1) % 2
+            if tc_t in test_cases_to_true:
+                # Return the test cases for condition 'c'
+                return tc_f.copy(), tc_t
+    # If no existing candidates
+    return None
+
+
 def run_one_pathsearch(f, reuse_h):
     def _check_monotone(acc, t):
         lt0 = len(t[0])  # t[0]!
@@ -369,33 +387,38 @@ def run_one_pathsearch(f, reuse_h):
     fs = sorted(f.support, key=lambda c: c.uniqid)
     test_case_pairs = dict()
     for c in fs:
-        # print('*** Condition:', c)
-        ns = bfs_upto_c(f, c)
-        # Note that this list can contain multiple paths to the same node.
-        if sys.version_info >= (3, 8):
-            checked_ns = accumulate(ns, _check_monotone, initial=(-1, None))
-            checked_ns.__next__()  # ditch accumulate-initializer
+        pair = find_existing_candidates(c, test_case_pairs)
+        if pair is not None:
+            test_case_pairs[c] = pair
         else:
-            checked_ns = zip(repeat(None), ns)
-        result = chain.from_iterable(map(lambda xpq: (prefix + xpq[0], (prefix + xpq[1][0], xpq[1][1])),
-                                         pairs_from_node(f, v_c)) for _, (prefix, v_c) in checked_ns)
-        # Use a fresh instance for every condition:
-        reuse_strategy = reuse_h(c)
-        for (pa, pb) in result:
-            path_a = uniformize(_path2point(pa), f.inputs)
-            path_b = uniformize(_path2point(pb[0]), f.inputs)
-            assert pa != pb[0]
-            # TODO: unclear why this doesn't work on pa/pb[0]
-            pair = order_path_pair(path_a, path_b, pb)
-            pick = reuse_strategy.pick_best(test_case_pairs, c, pair)
-            if pick is not None:
-                test_case_pairs[c] = pair
-                break
-        # If we didn't find any single "best" i-pair,
-        #   you may e.g. pick a random one here.
-        want_reconsider = reuse_strategy.reconsider_best_of_the_worst(test_case_pairs)
-        if want_reconsider is not None:
-            test_case_pairs[c] = want_reconsider
+            # Go through the BDD for creating a set of independent testcase candidates for condition 'c'
+            # print('*** Condition:', c)
+            ns = bfs_upto_c(f, c)
+            # Note that this list can contain multiple paths to the same node.
+            if sys.version_info >= (3, 8):
+                checked_ns = accumulate(ns, _check_monotone, initial=(-1, None))
+                checked_ns.__next__()  # ditch accumulate-initializer
+            else:
+                checked_ns = zip(repeat(None), ns)
+            result = chain.from_iterable(map(lambda xpq: (prefix + xpq[0], (prefix + xpq[1][0], xpq[1][1])),
+                                             pairs_from_node(f, v_c)) for _, (prefix, v_c) in checked_ns)
+            # Use a fresh instance for every condition:
+            reuse_strategy = reuse_h(c)
+            for (pa, pb) in result:
+                path_a = uniformize(_path2point(pa), f.inputs)
+                path_b = uniformize(_path2point(pb[0]), f.inputs)
+                assert pa != pb[0]
+                # TODO: unclear why this doesn't work on pa/pb[0]
+                pair = order_path_pair(path_a, path_b, pb)
+                pick = reuse_strategy.pick_best(test_case_pairs, c, pair)
+                if pick is not None:
+                    test_case_pairs[c] = pair
+                    break
+            # If we didn't find any single "best" i-pair,
+            #   you may e.g. pick a random one here.
+            want_reconsider = reuse_strategy.reconsider_best_of_the_worst(test_case_pairs)
+            if want_reconsider is not None:
+                test_case_pairs[c] = want_reconsider
     assert len(test_case_pairs.keys()) == len(f.inputs), "obvious ({})".format(len(test_case_pairs.keys()))
     # Lifted from bdd.py:
     test_case = instantiate(test_case_pairs)
