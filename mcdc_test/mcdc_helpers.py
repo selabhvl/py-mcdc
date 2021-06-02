@@ -16,6 +16,11 @@ def uniformize(path, conditions):
     return path
 
 
+def is_uniformized(path, conditions):
+    # type: (dict, tuple) -> bool
+    return type(path) == dict and path.keys() == set(conditions)
+
+
 def lrlr(ordered_conditions, path):
     """Prints a complete path as a binary string.
     The name is a pun on Left-Right-Left-Right...
@@ -322,6 +327,12 @@ def size(path):
     # type: (dict) -> int
     # Counts positions that are not None. Hence doesn't need uniform paths.
     return sum(0 if i is None else 1 for i in path.values())
+
+
+def negate(bit):
+    # type: (int) -> int
+    # Negate the current bit using (+ 1 % 2)
+    return (bit + 1) % 2
 
 
 def instantiate(test_case):
