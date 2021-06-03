@@ -355,6 +355,7 @@ def processFP(args):
     f2 = f1.compose(theMap)
     test_case, num_test_cases, uniq_test = mechanism(f2, heuristic)
     is_mcdc = test_mcdc(f2, test_case)
+    assert is_mcdc
     # print('Round: {0} Number of Conditions: {1} Number of TCs: {2}'.format(RoundN, len(f1.inputs), num_test_cases))
     assert len(f1.inputs) == len(f2.inputs)
     if num_test_cases > len(f1.inputs)+1:
@@ -365,7 +366,8 @@ def processFP(args):
             tcs_s = [(lrlr(fs, test_case[c][0]), lrlr(fs, test_case[c][1])) for c in fs]
             # TODO: doesn't really work within MP :-/
             logger = logging.getLogger(__name__)
-            logger.debug("Failed to reuse root node:\n"+str(i)+'/'+str(num_test_cases)+':'+str(p)+'\n'+str(tcs_s))
+            print("Failed to reuse root node (h:"+str(heuristic)+":\n"+str(i)+'/'+str(num_test_cases)+':'+str(bdd2expr(f2))+'\n'+str(tcs_s))
+            # assert False
 
     if num_test_cases <= len(f1.inputs) or not is_mcdc:
         # inv_map = {v: k for k, v in theMap.items()}
