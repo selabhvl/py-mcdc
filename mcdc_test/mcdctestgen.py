@@ -360,8 +360,7 @@ def processFP(args):
     theMap = {sorted(f1.inputs, key=lambda c: c.uniqid)[t]: X[p[t]] for t in range(len(f1.inputs))}
     f2 = f1.compose(theMap)
     test_case, num_test_cases, uniq_test = mechanism(f2, heuristic)
-    is_mcdc = test_mcdc(f2, test_case)
-    assert is_mcdc
+    is_mcdc = test_mcdc(f2, test_case) == True
     # print('Round: {0} Number of Conditions: {1} Number of TCs: {2}'.format(RoundN, len(f1.inputs), num_test_cases))
     assert len(f1.inputs) == len(f2.inputs)
     if num_test_cases > len(f1.inputs)+1:

@@ -169,7 +169,7 @@ def test_Dx(f, n):
     #src = Source(f.to_dot())
     # src.render('/tmp/1', view=True)
     test_case, _, _ = run_one_pathsearch(f, UseFirst)
-    assert tcasii.test_mcdc(f, test_case)
+    assert tcasii.test_mcdc(f, test_case) == True
     # return test_case, num_test_cases, uniq_test
     # print(tcasii.test_mcdc(f, test_case), tcasii.test_mcdc(f, test_case))
 

@@ -200,7 +200,10 @@ def test_mcdc(f, test_case):
         if not cond_3:
             assert not (int(rp0) == 1 and int(rp1) == 0), "Please construct your pairs more carefully!."
             break  # quick exit.
-    is_mcdc = cond_1 and cond_2 and cond_3
+    if cond_1 and cond_2 and cond_3:
+        is_mcdc = True
+    else:
+        is_mcdc = (cond_1, cond_2, cond_3)
 
     logger.debug("cond_1: {0}\ncond_2: {1}\ncond_3: {2}\nis_mcdc: {3}\n".format(cond_1, cond_2, cond_3, is_mcdc))
     return is_mcdc
