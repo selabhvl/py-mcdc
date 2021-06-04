@@ -1,13 +1,13 @@
 from functools import reduce
-from itertools import chain, product
+from itertools import chain, product, tee
 
 import pytest
 from graphviz import Source
 
-from pyeda.boolalg.bdd import _path2point, BDDNODEZERO, BDDNODEONE
+from pyeda.boolalg.bdd import _path2point
+from pyeda.boolalg.bfarray import bddvars
 
 import tcasii
-from mcdc_helpers import uniformize
 from pathsearch import *
 
 
@@ -167,6 +167,6 @@ def test_Dx(f, n):
     #src = Source(f.to_dot())
     # src.render('/tmp/1', view=True)
     test_case, _, _ = run_one_pathsearch(f, UseFirst)
-    assert tcasii.test_mcdc(f, test_case)
+    assert tcasii.test_mcdc(f, test_case) == True
     # return test_case, num_test_cases, uniq_test
     # print(tcasii.test_mcdc(f, test_case), tcasii.test_mcdc(f, test_case))

@@ -49,23 +49,25 @@ def no_mechanism(_f, _h):
 mechanism = no_mechanism
 
 
+def path_via_node(fr, vc, to, conditions):
+    # type: (BDDNode, BDDNode, BDDNode, iter) -> list
+    # list of paths from the root to terminal node via intermediate node vc
+
+    # temp_list_of_paths = list(_iter_all_paths(fr, to))
+    # list_of_paths = [path for path in temp_list_of_paths if vc in path]
+
+    list_of_paths = [uniformize(_path2point(path), conditions)
+                     for path in _iter_all_paths(fr, to) if vc in path]
+    return list_of_paths
+
+
+def equal(bddnode, condition):
+    # type: (BDDNode, BDDVariable) -> bool
+    return bddnode.root == condition.uniqid
+
+
 def satisfy_mcdc(f, heuristic):
     # type: (BinaryDecisionDiagram, callable) -> (dict, int, list)
-
-    def equal(bddnode, condition):
-        # type: (BDDNode, BDDVariable) -> bool
-        return bddnode.root == condition.uniqid
-
-    def path_via_node(fr, vc, to, conditions):
-        # type: (BDDNode, BDDNode, BDDNode, iter) -> list
-        # list of paths from the root to terminal node via intermediate node vc
-
-        # temp_list_of_paths = list(_iter_all_paths(fr, to))
-        # list_of_paths = [path for path in temp_list_of_paths if vc in path]
-
-        list_of_paths = [uniformize(_path2point(path), conditions)
-                         for path in _iter_all_paths(fr, to) if vc in path]
-        return list_of_paths
 
     def select_paths_bdd(f):
         # type: (BinaryDecisionDiagram) -> dict
@@ -207,6 +209,10 @@ def sample_one(l):
 
 def gen_perm(l):
     global maxRounds
+    return gen_perm_max(maxRounds, l)
+
+
+def gen_perm_max(maxRounds, l):
     # If you're asking for more rounds than we have permutations,
     #   we'll give them all to you.
     if maxRounds >= factorial(l):
@@ -354,8 +360,7 @@ def processFP(args):
     theMap = {sorted(f1.inputs, key=lambda c: c.uniqid)[t]: X[p[t]] for t in range(len(f1.inputs))}
     f2 = f1.compose(theMap)
     test_case, num_test_cases, uniq_test = mechanism(f2, heuristic)
-    is_mcdc = test_mcdc(f2, test_case)
-    assert is_mcdc
+    is_mcdc = test_mcdc(f2, test_case) == True
     # print('Round: {0} Number of Conditions: {1} Number of TCs: {2}'.format(RoundN, len(f1.inputs), num_test_cases))
     assert len(f1.inputs) == len(f2.inputs)
     if num_test_cases > len(f1.inputs)+1:

@@ -15,9 +15,9 @@ from sortedcontainers import SortedList
 import tcasii
 from vsplot import plot
 from mcdctestgen import run_experiment, calc_reuse, calc_may_reuse
-from pyeda.boolalg.bdd import _path2point, BDDNODEZERO, BDDNODEONE
+from pyeda.boolalg.bdd import _path2point, BDDNODEZERO, BDDNODEONE, BDDZERO, BDDONE
 from mcdc_helpers import uniformize, merge, instantiate, unique_tests, size, merge_Maybe_except_c, negate, \
-    is_uniformized
+    is_uniformized, lrlr
 
 logger = None  # lazy
 
@@ -402,10 +402,14 @@ def run_one_pathsearch(f, reuse_h):
                 checked_ns = zip(repeat(None), ns)
             result = chain.from_iterable(map(lambda xpq: (prefix + xpq[0], (prefix + xpq[1][0], xpq[1][1])),
                                              pairs_from_node(f, v_c)) for _, (prefix, v_c) in checked_ns)
-
+        # TODO: assert that the intersection of José hack and the old result is not empty.
+        # Actually: Or is it even stronger? All of those in the original approach that have reuse > 0 are EXACTLY José's!
+        # TODO: assert that all OTHER old results have reuse = 0.
+        # (We know that there exist n+1 solutions that we would only find if we would pick the right reuse=0 now.)
         # Use a fresh instance for every condition:
         reuse_strategy = reuse_h(c)
         for (pa, pb) in result:
+            # TODO: Should be refactored as a map around the chain.from_it.map() above.
             if not is_uniformized(pa, f.inputs) and not is_uniformized(pb, f.inputs):
                 path_a = uniformize(_path2point(pa), f.inputs)
                 path_b = uniformize(_path2point(pb[0]), f.inputs)
@@ -414,6 +418,8 @@ def run_one_pathsearch(f, reuse_h):
             else:
                 pair = (pa, pb)
             assert pair[0] != pair[1]
+            assert f.restrict(pair[0]) == BDDZERO, lrlr(fs, pair[0])
+            assert f.restrict(pair[1]) == BDDONE, lrlr(fs, pair[1])
             pick = reuse_strategy.pick_best(test_case_pairs, c, pair)
             if pick is not None:
                 test_case_pairs[c] = pair
