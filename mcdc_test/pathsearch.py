@@ -380,6 +380,15 @@ def find_existing_candidates(c, f, test_case_pairs):
 
 
 def run_one_pathsearch(f, reuse_h):
+
+    def uniformize_list(papb):
+        pa, pb = papb
+        path_a = uniformize(_path2point(pa), f.inputs)
+        path_b = uniformize(_path2point(pb[0]), f.inputs)
+        # TODO: unclear why this doesn't work on pa/pb[0]
+        pair = order_path_pair(path_a, path_b, pb)
+        return pair
+
     def _check_monotone(acc, t):
         lt0 = len(t[0])  # t[0]!
         res = lt0 >= acc[0]
@@ -402,21 +411,17 @@ def run_one_pathsearch(f, reuse_h):
                 checked_ns = zip(repeat(None), ns)
             result = chain.from_iterable(map(lambda xpq: (prefix + xpq[0], (prefix + xpq[1][0], xpq[1][1])),
                                              pairs_from_node(f, v_c)) for _, (prefix, v_c) in checked_ns)
+            # Reformat all pairs in 'result' so that they match the same format than pairs in the 'result' list returned
+            # by find_existing_candidates()
+            result = map(lambda papb: uniformize_list(papb), result)
+
         # TODO: assert that the intersection of José hack and the old result is not empty.
         # Actually: Or is it even stronger? All of those in the original approach that have reuse > 0 are EXACTLY José's!
         # TODO: assert that all OTHER old results have reuse = 0.
         # (We know that there exist n+1 solutions that we would only find if we would pick the right reuse=0 now.)
         # Use a fresh instance for every condition:
         reuse_strategy = reuse_h(c)
-        for (pa, pb) in result:
-            # TODO: Should be refactored as a map around the chain.from_it.map() above.
-            if not is_uniformized(pa, f.inputs) and not is_uniformized(pb, f.inputs):
-                path_a = uniformize(_path2point(pa), f.inputs)
-                path_b = uniformize(_path2point(pb[0]), f.inputs)
-                # TODO: unclear why this doesn't work on pa/pb[0]
-                pair = order_path_pair(path_a, path_b, pb)
-            else:
-                pair = (pa, pb)
+        for pair in result:
             assert pair[0] != pair[1]
             assert f.restrict(pair[0]) == BDDZERO, lrlr(fs, pair[0])
             assert f.restrict(pair[1]) == BDDONE, lrlr(fs, pair[1])
