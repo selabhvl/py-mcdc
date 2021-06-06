@@ -360,8 +360,8 @@ def order_path_pair(path_a, path_b, pb):
     return path_ff, path_tt
 
 
-def find_existing_candidates(c, f, test_case_pairs):
-    # type: (BDDVariable, BinaryDecisionDiagram, dict) -> list
+def find_existing_candidates(f, c, test_case_pairs):
+    # type: (BinaryDecisionDiagram, BDDVariable, dict) -> list
     # Get a unique instance for each test case that we have generated until now
     test_cases_to_false = [p0 for (p0, _) in test_case_pairs.values()]
     test_cases_to_true = [p1 for (_, p1) in test_case_pairs.values()]
@@ -381,8 +381,7 @@ def find_existing_candidates(c, f, test_case_pairs):
 
 def run_one_pathsearch(f, reuse_h):
 
-    def uniformize_list(papb):
-        pa, pb = papb
+    def uniformize_list(pa, pb):
         path_a = uniformize(_path2point(pa), f.inputs)
         path_b = uniformize(_path2point(pb[0]), f.inputs)
         # TODO: unclear why this doesn't work on pa/pb[0]
@@ -398,7 +397,7 @@ def run_one_pathsearch(f, reuse_h):
     fs = sorted(f.support, key=lambda c: c.uniqid)
     test_case_pairs = dict()
     for c in fs:
-        result = find_existing_candidates(c, f, test_case_pairs)
+        result = find_existing_candidates(f, c, test_case_pairs)
         if len(result) == 0:
             # Go through the BDD for creating a set of independent testcase candidates for condition 'c'
             # print('*** Condition:', c)
@@ -409,11 +408,10 @@ def run_one_pathsearch(f, reuse_h):
                 checked_ns.__next__()  # ditch accumulate-initializer
             else:
                 checked_ns = zip(repeat(None), ns)
-            result = chain.from_iterable(map(lambda xpq: (prefix + xpq[0], (prefix + xpq[1][0], xpq[1][1])),
+            result = chain.from_iterable(map(lambda xpq: uniformize_list(prefix + xpq[0], (prefix + xpq[1][0], xpq[1][1])),
                                              pairs_from_node(f, v_c)) for _, (prefix, v_c) in checked_ns)
-            # Reformat all pairs in 'result' so that they match the same format than pairs in the 'result' list returned
+            # We're formatting all pairs in 'result' so that they match the same format than pairs in the 'result' list returned
             # by find_existing_candidates()
-            result = map(lambda papb: uniformize_list(papb), result)
 
         # TODO: assert that the intersection of José hack and the old result is not empty.
         # Actually: Or is it even stronger? All of those in the original approach that have reuse > 0 are EXACTLY José's!
