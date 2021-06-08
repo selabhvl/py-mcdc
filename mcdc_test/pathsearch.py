@@ -10,13 +10,14 @@ from random import randint, seed
 
 from graphviz import Source
 from matplotlib import pyplot as plt
+from more_itertools import partition
 from sortedcontainers import SortedList
 
 import tcasii
 from vsplot import plot
 from mcdctestgen import run_experiment, calc_reuse, calc_may_reuse
-from pyeda.boolalg.bdd import _path2point, BDDNODEZERO, BDDNODEONE
-from mcdc_helpers import uniformize, merge, instantiate, unique_tests, size, merge_Maybe_except_c
+from pyeda.boolalg.bdd import _path2point, BDDNODEZERO, BDDNODEONE, BDDZERO, BDDONE
+from mcdc_helpers import uniformize, merge, instantiate, unique_tests, size, merge_Maybe_except_c, lrlr
 
 logger = None  # lazy
 
@@ -209,6 +210,17 @@ class UseFirst:
         return None
 
 
+def random_ranked(choices, rank):
+    """Pick some (random?) element from the best-ranked bucket."""
+    assert len(choices) > 0
+    the_list = SortedList(choices, key=rank)
+    # Next, we partition off all "best" elements:
+    pred_0 = rank(the_list[0])
+    (_, els) = partition(lambda p: rank(p) == pred_0, the_list)
+    # TODO: randint() goes here:
+    return next(els)
+
+
 class Reuser:
     """This class takes the first pair that has any reuse. Worst case is that we don't
     have any, in which case you get some pair that we have looked at.
@@ -250,9 +262,7 @@ class Reuser:
             # We didn't find anything suitable.
             # Overwrite last result with a random choice,
             #  or whatever.
-            # i = randint(0, len(self.pool) - 1)
-            i = 0  # TODO: switch for determinism
-            return self.pool[i]
+            return random_ranked(self.pool, lambda _: True)
         return None
 
 
@@ -273,21 +283,23 @@ class LongestPath:
         return None
 
     def reconsider_best_of_the_worst(self, test_case_pairs):
-        assert len(self.pool) > 0
-        el = SortedList(self.pool, key=lambda path: (-calc_reuse(path[0], test_case_pairs) - calc_reuse(path[1], test_case_pairs),
-                                                       # highest reuse/longest path
-                                                       -size(path[0]) - size(path[1])
-                                                       ))[0]
-        return el
+        def rank(path):
+            return (-calc_reuse(path[0], test_case_pairs) - calc_reuse(path[1], test_case_pairs),
+                    # highest reuse/longest path
+                    -size(path[0]) - size(path[1])
+                    )
+
+        return random_ranked(self.pool, rank)
 
 
 class LongestMerge(LongestPath):
     def reconsider_best_of_the_worst(self, test_case_pairs):
-        assert len(self.pool) > 0
-        el = SortedList(self.pool, key=lambda path: (-calc_reuse(path[0], test_case_pairs) - calc_reuse(path[1], test_case_pairs),
-                                                       # highest reuse/longest path
-                                                       -size(path[0]) - size(path[1])
-                                                       ))[0]
+        def rank(path):
+            return (-calc_reuse(path[0], test_case_pairs) - calc_reuse(path[1], test_case_pairs),
+             # highest reuse/longest path
+             -size(path[0]) - size(path[1]))
+
+        el = random_ranked(self.pool, rank)
         merged = (merge_Maybe_except_c(self.c, el[0], el[1]), merge_Maybe_except_c(self.c, el[1], el[0]))
         assert merged[0] is not None
         assert merged[1] is not None
@@ -296,11 +308,11 @@ class LongestMerge(LongestPath):
 
 class LongestMayMerge(LongestPath):
     def reconsider_best_of_the_worst(self, test_case_pairs):
-        assert len(self.pool) > 0
-        el = SortedList(self.pool, key=lambda path: (-calc_may_reuse(path[0], test_case_pairs) - calc_may_reuse(path[1], test_case_pairs),
-                                                       # highest reuse/longest path
-                                                       -size(path[0]) - size(path[1])
-                                                       ))[0]
+        def rank(path):
+            return (-calc_may_reuse(path[0], test_case_pairs) - calc_may_reuse(path[1], test_case_pairs),
+             # highest reuse/longest path
+             -size(path[0]) - size(path[1]))
+        el = random_ranked(self.pool, rank)
         merged = (merge_Maybe_except_c(self.c, el[0], el[1]), merge_Maybe_except_c(self.c, el[1], el[0]))
         assert merged[0] is not None
         assert merged[1] is not None
@@ -310,10 +322,10 @@ class LongestMayMerge(LongestPath):
 class ShortestPathMerge(LongestPath):
 
     def reconsider_best_of_the_worst(self, test_case_pairs):
-        assert len(self.pool) > 0
-        el = SortedList(self.pool, key=lambda path: (size(path[0]) + size(path[1]),
-            -calc_may_reuse(path[0], test_case_pairs) - calc_may_reuse(path[1], test_case_pairs)
-                                                       ))[0]
+        def rank(path):
+            return (size(path[0]) + size(path[1]),
+             -calc_may_reuse(path[0], test_case_pairs) - calc_may_reuse(path[1], test_case_pairs))
+        el = rank(self.pool, rank)
         merged = (merge_Maybe_except_c(self.c, el[0], el[1]), merge_Maybe_except_c(self.c, el[1], el[0]))
         return merged
 
@@ -321,26 +333,29 @@ class ShortestPathMerge(LongestPath):
 class ShortestPath(LongestPath):
 
     def reconsider_best_of_the_worst(self, test_case_pairs):
-        assert len(self.pool) > 0
-        return SortedList(self.pool, key=lambda path: (-calc_reuse(path[0], test_case_pairs) - calc_reuse(path[1], test_case_pairs),
+        def rank(path):
+            return (-calc_reuse(path[0], test_case_pairs) - calc_reuse(path[1], test_case_pairs),
                                                        # highest reuse/longest path
-                                                       size(path[0]) + size(path[1])))[0]
+                                                       size(path[0]) + size(path[1]))
+        return random_ranked(self.pool, rank)
 
 
 class BestReuseOnly(LongestPath):
 
     def reconsider_best_of_the_worst(self, test_case_pairs):
-        assert len(self.pool) > 0
-        return SortedList(self.pool, key=lambda path: (-calc_reuse(path[0], test_case_pairs) - calc_reuse(path[1], test_case_pairs)))[0]
+        def rank(path):
+            return -calc_reuse(path[0], test_case_pairs) - calc_reuse(path[1], test_case_pairs)
+        return random_ranked(self.pool, rank)
 
 
 class ShortestNoreusePath(LongestPath):
 
     def reconsider_best_of_the_worst(self, test_case_pairs):
-        assert len(self.pool) > 0
-        return SortedList(self.pool, key=lambda path: (-calc_reuse(path[0], test_case_pairs) - calc_reuse(path[1], test_case_pairs),
-                                                       # highest reuse/longest path
-                                                       size(path[0]) + size(path[1])))[0]
+        def rank(path):
+            (-calc_reuse(path[0], test_case_pairs) - calc_reuse(path[1], test_case_pairs),
+             # highest reuse/longest path
+             size(path[0]) + size(path[1]))
+        return random_ranked(self.pool, rank)
 
 
 def order_path_pair(path_a, path_b, pb):
@@ -382,11 +397,13 @@ def run_one_pathsearch(f, reuse_h):
         # Use a fresh instance for every condition:
         reuse_strategy = reuse_h(c)
         for (pa, pb) in result:
+            # TODO: move up into map as per other branch.
             path_a = uniformize(_path2point(pa), f.inputs)
             path_b = uniformize(_path2point(pb[0]), f.inputs)
-            assert pa != pb[0]
             # TODO: unclear why this doesn't work on pa/pb[0]
             pair = order_path_pair(path_a, path_b, pb)
+            assert f.restrict(pair[0]) == BDDZERO, lrlr(fs, pair[0])
+            assert f.restrict(pair[1]) == BDDONE, lrlr(fs, pair[1])
             pick = reuse_strategy.pick_best(test_case_pairs, c, pair)
             if pick is not None:
                 test_case_pairs[c] = pair
