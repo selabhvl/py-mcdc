@@ -1,5 +1,16 @@
 from functools import reduce
 
+# def equal(path_1, path_2):
+#     # type: (dict, dict) -> bool
+#     # path_1 = {a: 0, b: None, c: 0}
+#     # path_2 = {a: 1, b: None, c: None}
+#
+#     # Both path should have the same keys
+#     # have_same_keys_assert(path_1, path_2)
+#     # conds = set(path_1.keys()).union(path_2.keys())
+#     conds = path_1.keys()
+#     return path_1.keys() == path_2.keys() and all(path_1[c] == path_2[c] for c in conds)
+
 
 def uniformize(path, conditions):
     # type: (dict, tuple) -> dict
