@@ -198,7 +198,7 @@ def independence_day_for_condition(f, v_c, t):
 
 
 class UseFirst:
-    def __init__(self, c):
+    def __init__(self, c, _rng):
         pass
 
     @staticmethod
@@ -210,27 +210,29 @@ class UseFirst:
         return None
 
 
-def random_ranked(choices, rank):
+def random_ranked(rng, choices, rank):
     """Pick some (random?) element from the best-ranked bucket."""
     assert len(choices) > 0
     the_list = SortedList(choices, key=rank)
     # Next, we partition off all "best" elements:
     pred_0 = rank(the_list[0])
-    (_, els) = partition(lambda p: rank(p) == pred_0, the_list)
-    # TODO: randint() goes here:
-    return next(els)
+    (_, els_it) = partition(lambda p: rank(p) == pred_0, the_list)
+    els = list(els_it)
+    i = rng.randrange(len(els)-1)
+    return els[i]
 
 
 class Reuser:
     """This class takes the first pair that has any reuse. Worst case is that we don't
     have any, in which case you get some pair that we have looked at.
     Make special provision for the root node and take the first pair we find."""
-    def __init__(self, c):
+    def __init__(self, c, rng):
         # The pool transfers state across all (visited) i-pairs
         #   until `pick_best` is happy. We may then use this info
         #   to reconsider our choice.
         self.pool = []
         self.c = c
+        self.rng = rng
 
     def pick_best(self, test_case_pairs, _c, pair):
         """None: keep on looking; otherwise return with `pair`.
@@ -262,18 +264,19 @@ class Reuser:
             # We didn't find anything suitable.
             # Overwrite last result with a random choice,
             #  or whatever.
-            return random_ranked(self.pool, lambda _: True)
+            return random_ranked(self.rng, self.pool, lambda _: True)
         return None
 
 
 class LongestPath:
-    def __init__(self, c):
+    def __init__(self, c, rng):
         # The pool transfers state across all (visited) i-pairs
         #   until `pick_best` is happy. We may then use this info
         #   to reconsider our choice.
         # Could be a set if we'd bother.
         self.pool = []
         self.c = c
+        self.rng = rng
 
     def pick_best(self, test_case_pairs, c, pair):
         # True: don't look for another, False: keep on looking.
@@ -289,7 +292,7 @@ class LongestPath:
                     -size(path[0]) - size(path[1])
                     )
 
-        return random_ranked(self.pool, rank)
+        return random_ranked(self.rng, self.pool, rank)
 
 
 class LongestMerge(LongestPath):
@@ -299,7 +302,7 @@ class LongestMerge(LongestPath):
              # highest reuse/longest path
              -size(path[0]) - size(path[1]))
 
-        el = random_ranked(self.pool, rank)
+        el = random_ranked(self.rng, self.pool, rank)
         merged = (merge_Maybe_except_c(self.c, el[0], el[1]), merge_Maybe_except_c(self.c, el[1], el[0]))
         assert merged[0] is not None
         assert merged[1] is not None
@@ -312,7 +315,7 @@ class LongestMayMerge(LongestPath):
             return (-calc_may_reuse(path[0], test_case_pairs) - calc_may_reuse(path[1], test_case_pairs),
              # highest reuse/longest path
              -size(path[0]) - size(path[1]))
-        el = random_ranked(self.pool, rank)
+        el = random_ranked(self.rng, self.pool, rank)
         merged = (merge_Maybe_except_c(self.c, el[0], el[1]), merge_Maybe_except_c(self.c, el[1], el[0]))
         assert merged[0] is not None
         assert merged[1] is not None
@@ -325,7 +328,7 @@ class ShortestPathMerge(LongestPath):
         def rank(path):
             return (size(path[0]) + size(path[1]),
              -calc_may_reuse(path[0], test_case_pairs) - calc_may_reuse(path[1], test_case_pairs))
-        el = rank(self.pool, rank)
+        el = random_ranked(self.rng, self.pool, rank)
         merged = (merge_Maybe_except_c(self.c, el[0], el[1]), merge_Maybe_except_c(self.c, el[1], el[0]))
         return merged
 
@@ -337,7 +340,7 @@ class ShortestPath(LongestPath):
             return (-calc_reuse(path[0], test_case_pairs) - calc_reuse(path[1], test_case_pairs),
                                                        # highest reuse/longest path
                                                        size(path[0]) + size(path[1]))
-        return random_ranked(self.pool, rank)
+        return random_ranked(self.rng, self.pool, rank)
 
 
 class BestReuseOnly(LongestPath):
@@ -345,7 +348,7 @@ class BestReuseOnly(LongestPath):
     def reconsider_best_of_the_worst(self, test_case_pairs):
         def rank(path):
             return -calc_reuse(path[0], test_case_pairs) - calc_reuse(path[1], test_case_pairs)
-        return random_ranked(self.pool, rank)
+        return random_ranked(self.rng, self.pool, rank)
 
 
 class ShortestNoreusePath(LongestPath):
@@ -355,7 +358,7 @@ class ShortestNoreusePath(LongestPath):
             (-calc_reuse(path[0], test_case_pairs) - calc_reuse(path[1], test_case_pairs),
              # highest reuse/longest path
              size(path[0]) + size(path[1]))
-        return random_ranked(self.pool, rank)
+        return random_ranked(self.rng, self.pool, rank)
 
 
 def order_path_pair(path_a, path_b, pb):
@@ -374,7 +377,7 @@ def order_path_pair(path_a, path_b, pb):
     return path_ff, path_tt
 
 
-def run_one_pathsearch(f, reuse_h):
+def run_one_pathsearch(f, reuse_h, rng):
     def _check_monotone(acc, t):
         lt0 = len(t[0])  # t[0]!
         res = lt0 >= acc[0]
@@ -395,7 +398,7 @@ def run_one_pathsearch(f, reuse_h):
         result = chain.from_iterable(map(lambda xpq: (prefix + xpq[0], (prefix + xpq[1][0], xpq[1][1])),
                                          pairs_from_node(f, v_c)) for _, (prefix, v_c) in checked_ns)
         # Use a fresh instance for every condition:
-        reuse_strategy = reuse_h(c)
+        reuse_strategy = reuse_h(c, rng)
         for (pa, pb) in result:
             # TODO: move up into map as per other branch.
             path_a = uniformize(_path2point(pa), f.inputs)
@@ -444,7 +447,7 @@ if __name__ == "__main__":
     # Probably we could sneak in a callback again if we really need it.
     for (hi, resultMap), t in zip(plot_data, t_list):
         # Gnuplot:
-        chart_name = 'VS-{}.{}-{}'.format(hs[hi](None).__class__.__name__, RNGseed, maxRounds)
+        chart_name = 'VS-{}.{}-{}'.format(hs[hi](None, None).__class__.__name__, RNGseed, maxRounds)
 
         with open('{}_resultMap.csv'.format(chart_name), 'w') as csvfile:
             result_map_writer = csv.writer(csvfile, delimiter=' ', quotechar='|', quoting=csv.QUOTE_MINIMAL)

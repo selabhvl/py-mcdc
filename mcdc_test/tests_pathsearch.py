@@ -1,5 +1,6 @@
 from functools import reduce
 from itertools import chain, product, tee
+from random import Random
 
 import pytest
 from graphviz import Source
@@ -166,7 +167,7 @@ def test_Dx(f, n):
     print()  # LF for pytest
     #src = Source(f.to_dot())
     # src.render('/tmp/1', view=True)
-    test_case, _, _ = run_one_pathsearch(f, UseFirst)
+    test_case, _, _ = run_one_pathsearch(f, UseFirst, Random(42))  # Note: RNG unused.
     assert tcasii.test_mcdc(f, test_case)
     # return test_case, num_test_cases, uniq_test
     # print(tcasii.test_mcdc(f, test_case), tcasii.test_mcdc(f, test_case))

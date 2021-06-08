@@ -3,7 +3,7 @@ import csv
 import matplotlib.pyplot as plt
 from multiprocessing import Pool, Manager
 from math import factorial
-from random import randint, seed
+from random import randint, seed, Random
 import sys
 import time
 from pyeda.boolalg.bdd import expr2bdd, bdd2expr, _iter_all_paths, _path2point, BDDNode, BDDNODEZERO, BDDNODEONE, BDDVariable, BinaryDecisionDiagram
@@ -66,7 +66,7 @@ def equal(bddnode, condition):
     return bddnode.root == condition.uniqid
 
 
-def satisfy_mcdc(f, heuristic):
+def satisfy_mcdc(f, heuristic, _rng):
     # type: (BinaryDecisionDiagram, callable) -> (dict, int, list)
 
     def select_paths_bdd(f):
@@ -330,10 +330,11 @@ def h3hl(tcs, c, paths_to_zero, paths_to_one):
 def processFP_with_time(args):
     tic = time.process_time_ns()
     i = args[0]
-    perms = args[1]
+    p = args[1]
     h = args[2]
     thread_time = args[3]
-    new_args = (i, perms, h)
+    rng = Random(p[0])  # poor man's seed.
+    new_args = (i, p, h, rng)
     value = processFP(new_args)
     toc = time.process_time_ns()
     elapsed_time = toc - tic
@@ -352,14 +353,14 @@ def paths_from_pair_is_reused(tcs, pair):
 
 def processFP(args):
     global mechanism
-    i, p, heuristic = args
+    i, p, heuristic, rng = args
     f1 = tcas[i]
     fresh_var = 'f'  # apparently there's something weird going on if this name is used before, eg. in tcasii
     assert fresh_var+"[0]" not in map(lambda x: str(x), f1.inputs)
     X = bddvars(fresh_var, len(f1.inputs))  # Let's hope this ain't too expensive.
     theMap = {sorted(f1.inputs, key=lambda c: c.uniqid)[t]: X[p[t]] for t in range(len(f1.inputs))}
     f2 = f1.compose(theMap)
-    test_case, num_test_cases, uniq_test = mechanism(f2, heuristic)
+    test_case, num_test_cases, uniq_test = mechanism(f2, heuristic, rng)
     is_mcdc = test_mcdc(f2, test_case)
     assert is_mcdc
     # print('Round: {0} Number of Conditions: {1} Number of TCs: {2}'.format(RoundN, len(f1.inputs), num_test_cases))
@@ -372,7 +373,7 @@ def processFP(args):
             tcs_s = [(lrlr(fs, test_case[c][0]), lrlr(fs, test_case[c][1])) for c in fs]
             # TODO: doesn't really work within MP :-/
             logger = logging.getLogger(__name__)
-            print("Failed to reuse root node (h:"+str(heuristic)+":\n"+str(i)+'/'+str(num_test_cases)+':'+str(bdd2expr(f2))+'\n'+str(tcs_s))
+            logger.debug("Failed to reuse root node (h:"+str(heuristic)+":\n"+str(i)+'/'+str(num_test_cases)+':'+str(bdd2expr(f2))+'\n'+str(tcs_s))
             # assert False
 
     if num_test_cases <= len(f1.inputs) or not is_mcdc:
