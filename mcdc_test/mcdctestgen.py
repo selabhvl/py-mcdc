@@ -36,6 +36,7 @@ class bcolors:
 # See `init_globals()`.
 # How many rounds:
 maxRounds = None
+rngRounds = None
 tcas = None
 tcas_num_cond = None
 
@@ -238,7 +239,7 @@ def calc_reuse(path, test_case):
 def calc_may_reuse(path, test_case):
     # for p in test_case.values():
     #   print("reuse:\t{0}".format(p))
-    tcs = (p for p in test_case.values() if merge_Maybe(path, p[0]) is not None or merge_Maybe(path, p[1]) is not None)
+    tcs = filter(lambda p: merge_Maybe(path, p[0]) is not None or merge_Maybe(path, p[1]) is not None, test_case.values())
     return len(list(tcs))
 
 
@@ -333,9 +334,8 @@ def processFP_with_time(args):
     p = args[1]
     h = args[2]
     thread_time = args[3]
-    rng = Random(p[0])  # poor man's seed.
-    new_args = (i, p, h, rng)
-    value = processFP(new_args)
+    rng = Random(args[4])
+    value = processFP(i, p, h, rng)
     toc = time.process_time_ns()
     elapsed_time = toc - tic
     thread_time.append(elapsed_time)
@@ -351,10 +351,9 @@ def paths_from_pair_is_reused(tcs, pair):
     return r0 + r1 > 2
 
 
-def processFP(args):
+def processFP(i, p, heuristic, rng):
     global mechanism
-    i, p, heuristic, rng = args
-    f1 = tcas[i]
+    f1 = tcas[i]  # Back into the global data (MP)
     fresh_var = 'f'  # apparently there's something weird going on if this name is used before, eg. in tcasii
     assert fresh_var+"[0]" not in map(lambda x: str(x), f1.inputs)
     X = bddvars(fresh_var, len(f1.inputs))  # Let's hope this ain't too expensive.
@@ -393,16 +392,18 @@ def process_one(arg):
     h = arg[2]
     pool = arg[3]
     thread_time = arg[4]
-    ntcs = pool.map(processFP_with_time, zip(repeat(i), perms, repeat(h), repeat(thread_time)))
-    count = 0  # track down a presumed glitch
+    ntcs = []
+    # We run several rounds for each permutation, using positions from the first permutation as seed.
+    # Blows numbers a bit out of the water though...
+    for p in perms[0][:rngRounds]:
+        rng_seed = p
+        ntcs += pool.map(processFP_with_time, zip(repeat(i), perms, repeat(h), repeat(thread_time), repeat(rng_seed)))
     for num_test_cases in ntcs:
         try:
             old = results[num_test_cases]
         except KeyError:
             old = 0
         results[num_test_cases] = old + 1
-        count = count + 1
-    assert count > 0, perms
     colour = ''
     # We keep these around for the CSV:
     sr = sorted(results)
@@ -423,8 +424,9 @@ def process_one(arg):
     return myKeys, resultMap
 
 
-def run_experiment(_maxRounds, hs, tcas, tcas_num_cond, mechanism):
+def run_experiment(rounds_config, hs, tcas, tcas_num_cond, mechanism):
     global maxRounds
+    global rngRounds
     resultMapx = None  # Python doesn't do functional `reduce()` below, but destructive:
 
     def red(acc, val):
@@ -435,7 +437,7 @@ def run_experiment(_maxRounds, hs, tcas, tcas_num_cond, mechanism):
     plot_data = []
     allKeys = set()
     # Generating permutations is faster than I thought.
-    maxRounds = _maxRounds
+    (maxRounds, rngRounds) = rounds_config
     perms = list(map(gen_perm, map(lambda f: len(f.inputs), tcas)))
     # Permutations are deterministic due to the fixed seed between runs.
     for (hi, h) in enumerate(hs):
@@ -454,7 +456,7 @@ def run_experiment(_maxRounds, hs, tcas, tcas_num_cond, mechanism):
         # We only do that once and create a pool that we reuse multiple times.
         num_proc = 4
         with Pool(num_proc, initializer=init_globals,
-                  initargs=(_maxRounds, list(map(lambda x: str(bdd2expr(x)), tcas)), tcas_num_cond, mechanism)) as p:
+                  initargs=(maxRounds, list(map(lambda x: str(bdd2expr(x)), tcas)), tcas_num_cond, mechanism)) as p:
             # BDDs ain't picklable, so we pass the index, not the BDD:
             # TODO: isn't that problem now solved with the "global pool"?
             # Pass our pool further down:
@@ -481,6 +483,11 @@ if __name__ == "__main__":
         maxRounds = int(sys.argv[1])
     except IndexError:
         maxRounds = 42
+    try:
+        rngRounds = int(sys.argv[2])
+    except IndexError:
+        rngRounds = 3
+
 
     RNGseed = 42
     # XXX Oh wow, it's even worse; MP uses a global random state?!
@@ -488,7 +495,7 @@ if __name__ == "__main__":
     seed(RNGseed)
 
     hs = [hi_reuse_short_path, hi_reuse_long_path]
-    allKeys, plot_data, t_list = run_experiment(maxRounds, hs, tcasii.tcas, tcasii.tcas_num_cond, satisfy_mcdc)
+    allKeys, plot_data, t_list = run_experiment((maxRounds, rngRounds), hs, tcasii.tcas, tcasii.tcas_num_cond, satisfy_mcdc)
 
     # plot_data and wall_clock_list must have the same length
     assert len(t_list) == len(plot_data)

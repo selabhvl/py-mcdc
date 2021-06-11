@@ -152,7 +152,7 @@ def test_D15():
 @pytest.mark.parametrize("fn", product([UseFirst, Reuser, LongestPath], zip(tcasii.tcas, tcasii.tcas_num_cond)))
 def test_volker_has_nplus1(fn):
     h, (f, n) = fn
-    _, plot_data, _ = run_experiment(20, [h], [f], [n], run_one_pathsearch)
+    _, plot_data, _ = run_experiment((20, 1), [h], [f], [n], run_one_pathsearch)
     (i, rm) = plot_data[0]
     (lowest, _count) = rm[f][0]
     if lowest != len(f.inputs)+1:

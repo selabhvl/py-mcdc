@@ -5,8 +5,8 @@ import logging
 import sys
 import functools
 from functools import reduce
-from itertools import chain, product, repeat, accumulate
-from random import randint, seed
+from itertools import chain, product, repeat, accumulate, takewhile
+from random import randint, seed, Random
 
 from graphviz import Source
 from matplotlib import pyplot as plt
@@ -59,7 +59,7 @@ def memoized_generator(f):
 # @memoized_generator
 def terminals_via_bfs_from(node):
     # Pushed down `terms`, since it was constant anyway and couldn't be @cached.
-    terms = set([BDDNODEZERO, BDDNODEONE])
+    terms = {BDDNODEZERO, BDDNODEONE}
     assert len(terms) >= 1 or len(terms) <= 2
     queue = collections.deque()
     queue.append((([], []), node))
@@ -108,7 +108,7 @@ def find_partner_from_following(f, node, terminal, path, suffix, seen_nodes_on_o
     if node in seen_nodes_on_other_path:
         return
     suffix_rest = suffix
-    if node in set([BDDNODEZERO, BDDNODEONE]):
+    if node in {BDDNODEZERO, BDDNODEONE}:
         if node is terminal:
             yield path, node
             return
@@ -125,7 +125,7 @@ def find_partner_from_following(f, node, terminal, path, suffix, seen_nodes_on_o
             for (c, s) in suffix:
                 if node in seen_nodes_on_other_path:
                     return
-                if node in set([BDDNODEZERO, BDDNODEONE]):
+                if node in {BDDNODEZERO, BDDNODEONE}:
                     if node is terminal:
                         yield path, node
                         return
@@ -161,7 +161,7 @@ def find_partner_from_following(f, node, terminal, path, suffix, seen_nodes_on_o
             if node is terminal:
                 yield path, node
             else:
-                if node not in set([BDDNODEZERO, BDDNODEONE]):
+                if node not in {BDDNODEZERO, BDDNODEONE}:
                     # suffix was shorter, so bfs for the right terminal
                     # TODO: that's not BFS yet ;-)
                     yield from find_partner_from_following(f, node.lo, terminal, path + [node.lo], [], seen_nodes_on_other_path)
@@ -216,7 +216,7 @@ def random_ranked(rng, choices, rank):
     the_list = SortedList(choices, key=rank)
     # Next, we partition off all "best" elements:
     pred_0 = rank(the_list[0])
-    (_, els_it) = partition(lambda p: rank(p) == pred_0, the_list)
+    els_it = takewhile(lambda p: rank(p) == pred_0, the_list)
     els = list(els_it)
     i = rng.randrange(len(els)-1)
     return els[i]
@@ -291,35 +291,27 @@ class LongestPath:
                     # highest reuse/longest path
                     -size(path[0]) - size(path[1])
                     )
-
-        return random_ranked(self.rng, self.pool, rank)
-
-
-class LongestMerge(LongestPath):
-    def reconsider_best_of_the_worst(self, test_case_pairs):
-        def rank(path):
-            return (-calc_reuse(path[0], test_case_pairs) - calc_reuse(path[1], test_case_pairs),
-             # highest reuse/longest path
-             -size(path[0]) - size(path[1]))
-
         el = random_ranked(self.rng, self.pool, rank)
-        merged = (merge_Maybe_except_c(self.c, el[0], el[1]), merge_Maybe_except_c(self.c, el[1], el[0]))
-        assert merged[0] is not None
-        assert merged[1] is not None
-        return merged
+        m01 = merge_Maybe_except_c(self.c, el[0], el[1])
+        assert m01 is not None
+        m10 = m01.copy()  # Quickly(?) construct partner
+        m10[self.c] = (m10[self.c] + 1) % 2  # probably José's right.
+        return m01, m10
 
 
 class LongestMayMerge(LongestPath):
     def reconsider_best_of_the_worst(self, test_case_pairs):
         def rank(path):
+            # `calc_may_reuse()` is much slower then just `calc_reuse()`.
             return (-calc_may_reuse(path[0], test_case_pairs) - calc_may_reuse(path[1], test_case_pairs),
              # highest reuse/longest path
              -size(path[0]) - size(path[1]))
         el = random_ranked(self.rng, self.pool, rank)
-        merged = (merge_Maybe_except_c(self.c, el[0], el[1]), merge_Maybe_except_c(self.c, el[1], el[0]))
-        assert merged[0] is not None
-        assert merged[1] is not None
-        return merged
+        m01 = merge_Maybe_except_c(self.c, el[0], el[1])
+        assert m01 is not None
+        m10 = m01.copy()  # Quickly(?) construct partner
+        m10[self.c] = (m10[self.c] + 1) % 2  # probably José's right.
+        return m01, m10
 
 
 class ShortestPathMerge(LongestPath):
@@ -395,15 +387,14 @@ def run_one_pathsearch(f, reuse_h, rng):
             checked_ns.__next__()  # ditch accumulate-initializer
         else:
             checked_ns = zip(repeat(None), ns)
-        result = chain.from_iterable(map(lambda xpq: (prefix + xpq[0], (prefix + xpq[1][0], xpq[1][1])),
+        result = chain.from_iterable(map(lambda xpq: (uniformize(_path2point(prefix + xpq[0]), f.inputs),
+                                                      (uniformize(_path2point(prefix + xpq[1][0]), f.inputs),
+                                                       xpq[1][1])),
                                          pairs_from_node(f, v_c)) for _, (prefix, v_c) in checked_ns)
         # Use a fresh instance for every condition:
         reuse_strategy = reuse_h(c, rng)
-        for (pa, pb) in result:
-            # TODO: move up into map as per other branch.
-            path_a = uniformize(_path2point(pa), f.inputs)
-            path_b = uniformize(_path2point(pb[0]), f.inputs)
-            # TODO: unclear why this doesn't work on pa/pb[0]
+        for (path_a, pb) in result:
+            path_b = pb[0]
             pair = order_path_pair(path_a, path_b, pb)
             assert f.restrict(pair[0]) == BDDZERO, lrlr(fs, pair[0])
             assert f.restrict(pair[1]) == BDDONE, lrlr(fs, pair[1])
@@ -416,6 +407,7 @@ def run_one_pathsearch(f, reuse_h, rng):
         want_reconsider = reuse_strategy.reconsider_best_of_the_worst(test_case_pairs)
         if want_reconsider is not None:
             test_case_pairs[c] = want_reconsider
+        # Note: there is no guarantee yet if the pair is fully merged.
     assert len(test_case_pairs.keys()) == len(f.inputs), "obvious ({})".format(len(test_case_pairs.keys()))
     # Lifted from bdd.py:
     test_case = instantiate(test_case_pairs)
@@ -430,15 +422,21 @@ if __name__ == "__main__":
     except IndexError:
         maxRounds = 42
 
+    try:
+        rngRounds = int(sys.argv[2])
+    except IndexError:
+        rngRounds = 3
+
     RNGseed = 42
     # XXX Oh wow, it's even worse; MP uses a global random state?!
     #     https://github.com/numpy/numpy/issues/9650#issuecomment-327144993
     seed(RNGseed)
 
-    hs = [LongestPath, LongestMerge, LongestMayMerge]
+    # LongestPath and LongestMayMerge seem identical.
+    hs = [LongestMayMerge, LongestPath, ShortestPath]
     # f = tcasii.makeLarge(tcasii.D15)
     # allKeys, plot_data, t_list = run_experiment(maxRounds, hs, [f], [len(f.inputs)], run_one_pathsearch)
-    allKeys, plot_data, t_list = run_experiment(maxRounds, hs, tcasii.tcas, tcasii.tcas_num_cond, run_one_pathsearch)
+    allKeys, plot_data, t_list = run_experiment((maxRounds, rngRounds), hs, tcasii.tcas, tcasii.tcas_num_cond, run_one_pathsearch)
 
     # plot_data and wall_clock_list must have the same length
     assert len(t_list) == len(plot_data)
