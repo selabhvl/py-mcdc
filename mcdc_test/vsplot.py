@@ -50,6 +50,9 @@ def plot(allKeys, chart_name, resultMap, t):
         ax.xaxis.set_major_locator(MultipleLocator(1))
         ax.yaxis.set_major_locator(MultipleLocator(0.1))
         # Set limits (min, max) in the axes
+        #ax.set_title('% of finding n+m test cases, H1, 1000 permutations')
+        ax.set_ylabel('Probability distribution')
+        ax.set_xlabel('Number of tests (m) additional to minimum set n+1')
         ax.set_ylim(0.0, 1.0)
         for i, (k_f, v_rm) in enumerate(resultMap.items()):
             expected_value = sum(map(lambda kv: (kv[0] - len(k_f.inputs)) * kv[1], v_rm))
