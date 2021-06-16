@@ -17,7 +17,8 @@ import tcasii
 from vsplot import plot
 from mcdctestgen import run_experiment, calc_reuse, calc_may_reuse
 from pyeda.boolalg.bdd import _path2point, BDDNODEZERO, BDDNODEONE, BDDZERO, BDDONE
-from mcdc_helpers import uniformize, merge, instantiate, unique_tests, size, merge_Maybe_except_c, lrlr
+from mcdc_helpers import uniformize, merge, instantiate, unique_tests, size, merge_Maybe_except_c, negate, \
+    is_uniformized, lrlr, xor
 
 logger = None  # lazy
 
@@ -370,6 +371,96 @@ def order_path_pair(path_a, path_b, pb):
 
 
 def run_one_pathsearch(f, reuse_h, rng):
+def find_existing_candidates(f, c, test_case_pairs):
+    # type: (BinaryDecisionDiagram, BDDVariable, dict) -> list
+    # Get a unique instance for each test case that we have generated until now
+    test_cases_to_false = [(p0, False) for (p0, _) in test_case_pairs.values()]
+    test_cases_to_true = [(p1, True) for (_, p1) in test_case_pairs.values()]
+    test_cases = test_cases_to_true + test_cases_to_false
+    candidates = []
+    for tc, b in test_cases:
+        # tc[c] = 0/1 or None
+        if tc[c] is not None:
+            # Clone current test case
+            tc_x = tc.copy()
+            tc_x[c] = negate(tc_x[c])
+            # f.restrict(tc) may return 0/1 or a new restricted BDD
+            # So f.restrict(tc) != f.restrict(tc_x) is not enough for adding (tc, tc_x) as candidate
+            # to the 'candidates' list. We have to ensure that the result of the evaluation is 0/1.
+            val_1 = f.restrict(tc)
+            val_2 = f.restrict(tc_x)
+            if val_1 != val_2 and {val_1, val_2} == {BDDNODEZERO, BDDNODEONE}:
+                # Add the test cases for condition 'c'
+                if b:
+                    cand = (tc_x, tc.copy())
+                else:
+                    cand = (tc.copy(), tc_x)
+                candidates.append(cand)
+    return candidates
+
+
+def run_one_pathsearch(f, reuse_h, rng):
+    def difference(c, list_paths_1, list_paths_2, test_case_pairs):
+        # type: (_, iter, iter, dict) -> list
+        # list_paths_1 = [p0, p1]
+        # list_paths_2 = [p1, p2]
+        # where:
+        # p0 = {a: 0, b: None, c: 0}
+        # p1 = {a: 1, b: None, c: None}
+
+        # list_paths_1 - list_paths_2 == [p0]
+
+        # return [(p0, p1) for (p0, p1) in list_paths_1 if (p0, p1) not in list_paths_2]
+        # return [pairs for pairs in list_paths_1 if pairs not in list_paths_2]
+        result = []
+        temp = []
+        for pair in list_paths_1:
+            p0, p1 = pair
+            # Current pair is ok if there exist some more general pair in list_paths_2
+            found = False
+            for pair_2 in list_paths_2:
+                p00, p11 = pair_2
+                if merge_Maybe_except_c(c, p0, p00) is not None and merge_Maybe_except_c(c, p1, p11) is not None:
+                    found = True
+            if not found:
+                result += [pair]
+
+        for pair_2 in list_paths_2:
+            found = False
+            p0, p1 = pair_2
+            for pair_1 in list_paths_1:
+                p00, p11 = pair_1
+                if merge_Maybe_except_c(c, p0, p00) is not None and merge_Maybe_except_c(c, p1, p11) is not None:
+                    found = True
+            if not found:
+                temp += [pair_2]
+
+        for p0, p1 in temp:
+            cr_ff = calc_reuse(p0, test_case_pairs)
+            cr_tt = calc_reuse(p1, test_case_pairs)
+            # assert cr_ff + cr_tt == 0
+
+        return result
+
+    def is_subset(c, list_paths_1, list_paths_2, test_case_pairs):
+        # type: (iter, iter) -> bool
+        # list_paths_1 = [p0, p1]
+        # list_paths_2 = [p1, p2]
+        # where:
+        # p0 = {a: 0, b: None, c: 0}
+        # p1 = {a: 1, b: None, c: None}
+
+        # return list_paths_1 - list_paths_2 == []
+        return len(difference(c, list_paths_1, list_paths_2, test_case_pairs)) == 0
+
+    def uniformize_list(pa, pb):
+        path_a = uniformize(_path2point(pa), f.inputs)
+        path_b = uniformize(_path2point(pb[0]), f.inputs)
+        # TODO: unclear why this doesn't work on pa/pb[0]
+        pair = order_path_pair(path_a, path_b, pb)
+        return pair
+
+
     def _check_monotone(acc, t):
         lt0 = len(t[0])  # t[0]!
         res = lt0 >= acc[0]
@@ -379,6 +470,8 @@ def run_one_pathsearch(f, reuse_h, rng):
     fs = sorted(f.support, key=lambda c: c.uniqid)
     test_case_pairs = dict()
     for c in fs:
+        result_ex_cand = find_existing_candidates(f, c, test_case_pairs)
+        # Go through the BDD for creating a set of independent testcase candidates for condition 'c'
         # print('*** Condition:', c)
         ns = bfs_upto_c(f, c)
         # Note that this list can contain multiple paths to the same node.
@@ -387,15 +480,40 @@ def run_one_pathsearch(f, reuse_h, rng):
             checked_ns.__next__()  # ditch accumulate-initializer
         else:
             checked_ns = zip(repeat(None), ns)
-        result = chain.from_iterable(map(lambda xpq: (uniformize(_path2point(prefix + xpq[0]), f.inputs),
-                                                      (uniformize(_path2point(prefix + xpq[1][0]), f.inputs),
-                                                       xpq[1][1])),
+        result = chain.from_iterable(map(lambda xpq: uniformize_list(prefix + xpq[0], (prefix + xpq[1][0], xpq[1][1])),
                                          pairs_from_node(f, v_c)) for _, (prefix, v_c) in checked_ns)
+        # We're formatting all pairs in 'result' so that they match the same format than pairs in the 'result' list returned
+        # by find_existing_candidates()
+
+        # TODO: assert that the intersection of José hack and the old result is not empty.
+        # Check if the existing candidates is a proper subset of the testcases proposed by the heuristics
+        # assert set(result_ex_cand) <= set(result), "Not a proper subset" ---> unavaiable because 'dict's are not hashable
+
+        # Auxiliar iterator
+        result_ex_cand, list_1 = itertools.tee(result_ex_cand)
+        result, list_2 = itertools.tee(result)
+        llist_1 = list(list_1)
+        llist_2 = list(list_2)
+        # l1 = [(p0, p1), (p2, p3)]
+        # l2 = [(p4, p1), (p5, p3)]
+
+        dif = difference(c, llist_1, llist_2, test_case_pairs)
+        for pair in dif:
+            assert f.restrict(pair[0]) == BDDZERO, lrlr(fs, pair[0])
+            assert f.restrict(pair[1]) == BDDONE, lrlr(fs, pair[1])
+            assert xor(pair[0], pair[1], c)
+
+        assert is_subset(c, llist_1, llist_2, test_case_pairs), \
+            "Not a proper subset: {0}".format([(lrlr(fs, pair[0]), lrlr(fs, pair[1])) for pair in dif])
+
+        result = result_ex_cand if len(llist_1) > 0 else result
+        # Actually: Or is it even stronger? All of those in the original approach that have reuse > 0 are EXACTLY José's!
+        # TODO: assert that all OTHER old results have reuse = 0.
+        # (We know that there exist n+1 solutions that we would only find if we would pick the right reuse=0 now.)
         # Use a fresh instance for every condition:
         reuse_strategy = reuse_h(c, rng)
-        for (path_a, pb) in result:
-            path_b = pb[0]
-            pair = order_path_pair(path_a, path_b, pb)
+        for pair in result:
+            assert pair[0] != pair[1]
             assert f.restrict(pair[0]) == BDDZERO, lrlr(fs, pair[0])
             assert f.restrict(pair[1]) == BDDONE, lrlr(fs, pair[1])
             pick = reuse_strategy.pick_best(test_case_pairs, c, pair)
