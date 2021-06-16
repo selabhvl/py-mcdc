@@ -373,7 +373,12 @@ def find_existing_candidates(f, c, test_case_pairs):
             # Clone current test case
             tc_x = tc.copy()
             tc_x[c] = negate(tc_x[c])
-            if f.restrict(tc) != f.restrict(tc_x):
+            # f.restrict(tc) may return 0/1 or a new restricted BDD
+            # So f.restrict(tc) != f.restrict(tc_x) is not enough for adding (tc, tc_x) as candidate
+            # to the 'candidates' list. We have to ensure that the result of the evaluation is 0/1.
+            val_1 = f.restrict(tc)
+            val_2 = f.restrict(tc_x)
+            if val_1 != val_2 and {val_1, val_2} == {BDDNODEZERO, BDDNODEONE}:
                 # Add the test cases for condition 'c'
                 if b:
                     cand = (tc_x, tc.copy())
