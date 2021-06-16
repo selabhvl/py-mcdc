@@ -370,7 +370,6 @@ def order_path_pair(path_a, path_b, pb):
     return path_ff, path_tt
 
 
-def run_one_pathsearch(f, reuse_h, rng):
 def find_existing_candidates(f, c, test_case_pairs):
     # type: (BinaryDecisionDiagram, BDDVariable, dict) -> list
     # Get a unique instance for each test case that we have generated until now
