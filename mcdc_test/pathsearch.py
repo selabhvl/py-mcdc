@@ -220,6 +220,8 @@ def random_ranked(rng, choices, rank):
     els_it = takewhile(lambda p: rank(p) == pred_0, the_list)
     els = list(els_it)
     i = rng.randrange(len(els)-1)
+    logger = logging.getLogger("MCDC")
+    logger.debug("Picking index {}/{}".format(i, len(els)))
     return els[i]
 
 
@@ -544,15 +546,16 @@ if __name__ == "__main__":
     except IndexError:
         rngRounds = 3
 
-    RNGseed = 42
+    RNGseed = 11
     # XXX Oh wow, it's even worse; MP uses a global random state?!
     #     https://github.com/numpy/numpy/issues/9650#issuecomment-327144993
     seed(RNGseed)
 
     # LongestPath and LongestMayMerge seem identical.
-    hs = [LongestMayMerge, LongestPath, ShortestPath]
-    # f = tcasii.makeLarge(tcasii.D15)
-    # allKeys, plot_data, t_list = run_experiment(maxRounds, hs, [f], [len(f.inputs)], run_one_pathsearch)
+    hs = [LongestMayMerge, LongestPath, ShortestPathMerge]
+    # hs = [ShortestPathMerge]
+    # f = tcasii.makeLarge(tcasii.D1)
+    # allKeys, plot_data, t_list = run_experiment((maxRounds, rngRounds), hs, [f], [len(f.inputs)], run_one_pathsearch)
     allKeys, plot_data, t_list = run_experiment((maxRounds, rngRounds), hs, tcasii.tcas, tcasii.tcas_num_cond, run_one_pathsearch)
 
     # plot_data and wall_clock_list must have the same length
