@@ -14,11 +14,12 @@ from more_itertools import partition
 from sortedcontainers import SortedList
 
 import tcasii
+from comparePlotResults import compareresult
 from vsplot import plot
 from mcdctestgen import run_experiment, calc_reuse, calc_may_reuse
 from pyeda.boolalg.bdd import _path2point, BDDNODEZERO, BDDNODEONE, BDDZERO, BDDONE
 from mcdc_helpers import uniformize, merge, instantiate, unique_tests, size, merge_Maybe_except_c, negate, \
-    is_uniformized, lrlr, xor
+    is_uniformized, lrlr, xor, replace_final_question_marks
 
 logger = None  # lazy
 
@@ -271,6 +272,33 @@ class Reuser:
         return None
 
 
+class RandomReuser(Reuser):
+    """Either we only pick randomly from those that have any reuse, or a completely random one."""
+    def __init__(self, c, rng):
+        self.pool_all = []
+        self.pool = []
+        self.c = c
+        self.rng = rng
+
+    def pick_best(self, test_case_pairs, _c, pair):
+        if calc_reuse(pair[0], test_case_pairs) + calc_reuse(pair[1], test_case_pairs) > 0:
+            self.pool.append(pair)
+            self.pool_all = None
+        else:
+            if self.pool_all is not None:
+                self.pool_all.append(pair)
+        return None
+
+    def reconsider_best_of_the_worst(self, _test_case_pairs):
+        if len(self.pool) > 1:
+            # We didn't find anything suitable.
+            # Overwrite last result with a random choice,
+            #  or whatever.
+            return random_ranked(self.rng, self.pool, lambda _: True)
+        else:
+            return random_ranked(self.rng, self.pool_all, lambda _: True)
+
+
 class LongestPath:
     def __init__(self, c, rng):
         # The pool transfers state across all (visited) i-pairs
@@ -302,11 +330,42 @@ class LongestPath:
         return m01, m10
 
 
+class LongestBool(LongestPath):
+    def reconsider_best_of_the_worst(self, test_case_pairs):
+        def rank(path):
+            return (not (calc_reuse(path[0], test_case_pairs) + calc_reuse(path[1], test_case_pairs) > 0),
+                    # Since False < True, if there is reuse, we need False, so that it goes to the front.
+                    # longest path
+                    -size(path[0]) - size(path[1])
+                    )
+        el = random_ranked(self.rng, self.pool, rank)
+        m01 = merge_Maybe_except_c(self.c, el[0], el[1])
+        assert m01 is not None
+        m10 = m01.copy()  # Quickly(?) construct partner
+        m10[self.c] = (m10[self.c] + 1) % 2  # probably José's right.
+        return m01, m10
+
+
 class LongestMayMerge(LongestPath):
     def reconsider_best_of_the_worst(self, test_case_pairs):
         def rank(path):
             # `calc_may_reuse()` is much slower then just `calc_reuse()`.
             return (-calc_may_reuse(path[0], test_case_pairs) - calc_may_reuse(path[1], test_case_pairs),
+             # highest reuse/longest path
+             -size(path[0]) - size(path[1]))
+        el = random_ranked(self.rng, self.pool, rank)
+        m01 = merge_Maybe_except_c(self.c, el[0], el[1])
+        assert m01 is not None
+        m10 = m01.copy()  # Quickly(?) construct partner
+        m10[self.c] = (m10[self.c] + 1) % 2  # probably José's right.
+        return m01, m10
+
+
+class LongestBoolMay(LongestMayMerge):
+    def reconsider_best_of_the_worst(self, test_case_pairs):
+        def rank(path):
+            # `calc_may_reuse()` is much slower then just `calc_reuse()`.
+            return (not (calc_may_reuse(path[0], test_case_pairs) + calc_may_reuse(path[1], test_case_pairs) > 0),
              # highest reuse/longest path
              -size(path[0]) - size(path[1]))
         el = random_ranked(self.rng, self.pool, rank)
@@ -461,7 +520,6 @@ def run_one_pathsearch(f, reuse_h, rng):
         pair = order_path_pair(path_a, path_b, pb)
         return pair
 
-
     def _check_monotone(acc, t):
         lt0 = len(t[0])  # t[0]!
         res = lt0 >= acc[0]
@@ -526,13 +584,16 @@ def run_one_pathsearch(f, reuse_h, rng):
         want_reconsider = reuse_strategy.reconsider_best_of_the_worst(test_case_pairs)
         if want_reconsider is not None:
             test_case_pairs[c] = want_reconsider
-        # Note: there is no guarantee yet if the pair is fully merged.
+        # The current test case MAY have been derived from an existing one, so we should specialise.
+        test_case_pairs = instantiate(test_case_pairs)
+        # Note: there was no guarantee yet if the pair is fully merged, the heuristics should make sure.
     assert len(test_case_pairs.keys()) == len(f.inputs), "obvious ({})".format(len(test_case_pairs.keys()))
     # Lifted from bdd.py:
-    test_case = instantiate(test_case_pairs)
-    uniq_test = unique_tests(test_case)
+    # TODO -- eliminate: test_case = instantiate(test_case_pairs)
+    replace_final_question_marks(test_case_pairs)
+    uniq_test = unique_tests(test_case_pairs)
     num_test_cases = len(uniq_test)
-    return test_case, num_test_cases, uniq_test
+    return test_case_pairs, num_test_cases, uniq_test
 
 
 if __name__ == "__main__":
@@ -552,10 +613,11 @@ if __name__ == "__main__":
     seed(RNGseed)
 
     # LongestPath and LongestMayMerge seem identical.
-    hs = [LongestMayMerge, LongestPath, ShortestPathMerge]
+    hs = [LongestMayMerge, LongestPath, LongestBool, LongestBoolMay, RandomReuser]
     # hs = [ShortestPathMerge]
     # f = tcasii.makeLarge(tcasii.D1)
     # allKeys, plot_data, t_list = run_experiment((maxRounds, rngRounds), hs, [f], [len(f.inputs)], run_one_pathsearch)
+    # t_list = execution time
     allKeys, plot_data, t_list = run_experiment((maxRounds, rngRounds), hs, tcasii.tcas, tcasii.tcas_num_cond, run_one_pathsearch)
 
     # plot_data and wall_clock_list must have the same length
@@ -563,6 +625,21 @@ if __name__ == "__main__":
 
     # TODO: Pity, for now you'll have to wait again for plotting.
     # Probably we could sneak in a callback again if we really need it.
+    def only_nplus1(args):
+        hi, resultMap = args
+        result_vec = []
+        for vs in resultMap.values():
+            (ns, count) = vs[0]
+            if (ns == tcasii.tcas_num_cond[hi]+1):
+                result_vec.append(count)
+            else:
+                # Obvs wouldn't work so well with masking:
+                result_vec.append(-1)
+        return result_vec
+
+    ls = list(map(only_nplus1, plot_data))
+    print(compareresult(ls))
+
     for (hi, resultMap), t in zip(plot_data, t_list):
         # Gnuplot:
         chart_name = 'VS-{}.{}-{}-{}'.format(hs[hi](None, None).__class__.__name__, RNGseed, maxRounds, rngRounds)

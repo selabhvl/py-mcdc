@@ -179,7 +179,7 @@ def satisfy_mcdc(f, heuristic, _rng):
     # Second loop
     # Instantiate '?' for each path in test_case
     test_case = instantiate(test_case)
-
+    replace_final_question_marks(test_case)
     uniq_test = unique_tests(test_case)
     # TODO: num_test_cases is kind of redundant
     num_test_cases = len(uniq_test)

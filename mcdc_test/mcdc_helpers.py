@@ -377,5 +377,5 @@ def instantiate(test_case):
         # TODO: is only once at the end enough?
         stabilize(new_test_case)
 
-    replace_final_question_marks(test_case)
+
     return test_case
