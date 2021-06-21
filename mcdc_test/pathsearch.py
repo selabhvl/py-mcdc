@@ -565,7 +565,7 @@ if __name__ == "__main__":
     # Probably we could sneak in a callback again if we really need it.
     for (hi, resultMap), t in zip(plot_data, t_list):
         # Gnuplot:
-        chart_name = 'VS-{}.{}-{}'.format(hs[hi](None, None).__class__.__name__, RNGseed, maxRounds)
+        chart_name = 'VS-{}.{}-{}-{}'.format(hs[hi](None, None).__class__.__name__, RNGseed, maxRounds, rngRounds)
 
         with open('{}_resultMap.csv'.format(chart_name), 'w') as csvfile:
             result_map_writer = csv.writer(csvfile, delimiter=' ', quotechar='|', quoting=csv.QUOTE_MINIMAL)
