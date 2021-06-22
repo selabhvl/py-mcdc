@@ -1,5 +1,24 @@
 from functools import reduce
 
+
+def better_size(tcs, pairs):
+    # type: (dict, tuple) -> int
+    # |(conditions(p0) ∪ conditions(p1))\conditions(tcs)|
+
+    def conditions(pi):
+        # type: (dict) -> set
+        # returns all the conditions c where pi[c] != '?'
+        return {c for c in pi.keys() if pi[c] is not None}
+
+    def conditions_tcs(tcs):
+        # type: (dict) -> set
+        # returns (conditions(p0) ∪ conditions(p1) for all c in tcs[c] = (p0, p1)
+        return {conditions(p0) | conditions(p1) for p0, p1 in tcs.values()}
+
+    p0, p1 = pairs
+    res = (conditions(p0) | conditions(p1)) - conditions_tcs(tcs)
+    return len(res)
+
 # def equal(path_1, path_2):
 #     # type: (dict, dict) -> bool
 #     # path_1 = {a: 0, b: None, c: 0}
