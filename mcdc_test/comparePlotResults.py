@@ -1,6 +1,3 @@
-h1=[[1, 2, 3, 1, 2, 6, 3], [2, 4, 5, 8, 0, 5, 18], [1, 1, 1, 8, 0, 140, 3], [0, 1, 0, 8, 0, 10, 13]]
-h2=[[1,2,3],[2,4,5],[1,1,1]]
-
 
 def compareresult(hs):
     BoolTF = map(lambda vals: map(lambda v: v == min(vals), vals), zip(*hs))

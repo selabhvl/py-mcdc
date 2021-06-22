@@ -2,6 +2,7 @@ from mcdctestgen import run_experiment, satisfy_mcdc, hi_reuse_long_path, hi_reu
 import tcasii
 from tcasii import makeLarge
 import pytest
+from comparePlotResults import compareresult
 
 
 # Mark a set of functions in a particular way:
@@ -43,3 +44,9 @@ def slow_test_trouble():
     (i, rm) = plot_data[0]
     (lowest, _count) = rm[f][0]
     assert lowest == len(f.inputs)+1
+
+def test_compareresult():
+    example_hs1 = [[1, 2, 3, 1, 2, 6, 3], [2, 4, 5, 8, 0, 5, 18], [1, 1, 1, 8, 0, 140, 3], [0, 1, 0, 8, 0, 10, 13]]
+    example_hs2 = [1, 2, 3], [2, 4, 5], [1, 1, 1]
+    assert compareresult(example_hs1) == [2, 2, 3, 4]
+    assert compareresult(example_hs2) == [1, 0, 3]
