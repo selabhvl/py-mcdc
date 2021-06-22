@@ -10,7 +10,7 @@ from pyeda.boolalg.bfarray import bddvars
 
 import tcasii
 from pathsearch import *
-
+from mcdc_helpers import better_size
 
 def test_something():
     f = tcasii.D3
@@ -171,3 +171,11 @@ def test_Dx(f, n):
     assert tcasii.test_mcdc(f, test_case)
     # return test_case, num_test_cases, uniq_test
     # print(tcasii.test_mcdc(f, test_case), tcasii.test_mcdc(f, test_case))
+
+@pytest.mark.parametrize("f,n", zip(tcasii.tcas, tcasii.tcas_num_cond))
+def test_better_size(f, n):
+    test_case, _, _ = run_one_pathsearch(f, UseFirst, Random(42))  # Note: RNG unused.
+    conds = list(test_case.keys())
+    # better_size(test_case, (p0, p1))
+    bs = better_size(test_case, test_case[conds[0]])
+    assert bs > 0

@@ -13,7 +13,11 @@ def better_size(tcs, pairs):
     def conditions_tcs(tcs):
         # type: (dict) -> set
         # returns (conditions(p0) ∪ conditions(p1) for all c in tcs[c] = (p0, p1)
-        return {conditions(p0) | conditions(p1) for p0, p1 in tcs.values()}
+
+        res = set()
+        for p in tcs.values():
+             res.union(conditions(p[0]) | conditions(p[1]))
+        return res
 
     p0, p1 = pairs
     res = (conditions(p0) | conditions(p1)) - conditions_tcs(tcs)
