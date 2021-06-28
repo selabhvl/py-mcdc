@@ -16,7 +16,7 @@ from sortedcontainers import SortedList
 import tcasii
 from comparePlotResults import compareresult
 from vsplot import plot
-from mcdctestgen import run_experiment, calc_reuse, calc_may_reuse
+from mcdctestgen import run_experiment, calc_reuse, calc_may_reuse, better_size
 from pyeda.boolalg.bdd import _path2point, BDDNODEZERO, BDDNODEONE, BDDZERO, BDDONE
 from mcdc_helpers import uniformize, merge, instantiate, unique_tests, size, merge_Maybe_except_c, negate, \
     is_uniformized, lrlr, xor, replace_final_question_marks
@@ -212,7 +212,7 @@ class UseFirst:
         return None
 
 
-def random_ranked(rng, choices, rank):
+def random_ranked(cls, rng, choices, rank):
     """Pick some (random?) element from the best-ranked bucket."""
     assert len(choices) > 0
     the_list = SortedList(choices, key=rank)
@@ -222,7 +222,8 @@ def random_ranked(rng, choices, rank):
     els = list(els_it)
     i = rng.randrange(len(els)-1)
     logger = logging.getLogger("MCDC")
-    logger.debug("Picking index {}/{}".format(i, len(els)))
+    logger.debug("{}: Picking index {}/{}".format(cls.__class__.__name__, i, len(els)))
+    # print("{}: Picking index {}/{}".format(cls.__class__.__name__, i, len(els)))
     return els[i]
 
 
@@ -268,7 +269,7 @@ class Reuser:
             # We didn't find anything suitable.
             # Overwrite last result with a random choice,
             #  or whatever.
-            return random_ranked(self.rng, self.pool, lambda _: True)
+            return random_ranked(self, self.rng, self.pool, lambda _: True)
         return None
 
 
@@ -294,9 +295,9 @@ class RandomReuser(Reuser):
             # We didn't find anything suitable.
             # Overwrite last result with a random choice,
             #  or whatever.
-            return random_ranked(self.rng, self.pool, lambda _: True)
+            return random_ranked(self, self.rng, self.pool, lambda _: True)
         else:
-            return random_ranked(self.rng, self.pool_all, lambda _: True)
+            return random_ranked(self, self.rng, self.pool_all, lambda _: True)
 
 
 class LongestPath:
@@ -322,7 +323,22 @@ class LongestPath:
                     # highest reuse/longest path
                     -size(path[0]) - size(path[1])
                     )
-        el = random_ranked(self.rng, self.pool, rank)
+        el = random_ranked(self, self.rng, self.pool, rank)
+        m01 = merge_Maybe_except_c(self.c, el[0], el[1])
+        assert m01 is not None
+        m10 = m01.copy()  # Quickly(?) construct partner
+        m10[self.c] = (m10[self.c] + 1) % 2  # probably José's right.
+        return m01, m10
+
+
+class LongestBetterSize(LongestPath):
+    def reconsider_best_of_the_worst(self, test_case_pairs):
+        def rank(path):
+            return (-calc_reuse(path[0], test_case_pairs) - calc_reuse(path[1], test_case_pairs),
+                    # highest reuse/longest path
+                    -better_size(test_case_pairs, path)
+                    )
+        el = random_ranked(self, self.rng, self.pool, rank)
         m01 = merge_Maybe_except_c(self.c, el[0], el[1])
         assert m01 is not None
         m10 = m01.copy()  # Quickly(?) construct partner
@@ -338,7 +354,7 @@ class LongestBool(LongestPath):
                     # longest path
                     -size(path[0]) - size(path[1])
                     )
-        el = random_ranked(self.rng, self.pool, rank)
+        el = random_ranked(self, self.rng, self.pool, rank)
         m01 = merge_Maybe_except_c(self.c, el[0], el[1])
         assert m01 is not None
         m10 = m01.copy()  # Quickly(?) construct partner
@@ -353,7 +369,7 @@ class LongestMayMerge(LongestPath):
             return (-calc_may_reuse(path[0], test_case_pairs) - calc_may_reuse(path[1], test_case_pairs),
              # highest reuse/longest path
              -size(path[0]) - size(path[1]))
-        el = random_ranked(self.rng, self.pool, rank)
+        el = random_ranked(self, self.rng, self.pool, rank)
         m01 = merge_Maybe_except_c(self.c, el[0], el[1])
         assert m01 is not None
         m10 = m01.copy()  # Quickly(?) construct partner
@@ -368,7 +384,7 @@ class LongestBoolMay(LongestMayMerge):
             return (not (calc_may_reuse(path[0], test_case_pairs) + calc_may_reuse(path[1], test_case_pairs) > 0),
              # highest reuse/longest path
              -size(path[0]) - size(path[1]))
-        el = random_ranked(self.rng, self.pool, rank)
+        el = random_ranked(self, self.rng, self.pool, rank)
         m01 = merge_Maybe_except_c(self.c, el[0], el[1])
         assert m01 is not None
         m10 = m01.copy()  # Quickly(?) construct partner
@@ -382,7 +398,7 @@ class ShortestPathMerge(LongestPath):
         def rank(path):
             return (size(path[0]) + size(path[1]),
              -calc_may_reuse(path[0], test_case_pairs) - calc_may_reuse(path[1], test_case_pairs))
-        el = random_ranked(self.rng, self.pool, rank)
+        el = random_ranked(self, self.rng, self.pool, rank)
         merged = (merge_Maybe_except_c(self.c, el[0], el[1]), merge_Maybe_except_c(self.c, el[1], el[0]))
         return merged
 
@@ -394,7 +410,7 @@ class ShortestPath(LongestPath):
             return (-calc_reuse(path[0], test_case_pairs) - calc_reuse(path[1], test_case_pairs),
                                                        # highest reuse/longest path
                                                        size(path[0]) + size(path[1]))
-        return random_ranked(self.rng, self.pool, rank)
+        return random_ranked(self, self.rng, self.pool, rank)
 
 
 class BestReuseOnly(LongestPath):
@@ -402,7 +418,7 @@ class BestReuseOnly(LongestPath):
     def reconsider_best_of_the_worst(self, test_case_pairs):
         def rank(path):
             return -calc_reuse(path[0], test_case_pairs) - calc_reuse(path[1], test_case_pairs)
-        return random_ranked(self.rng, self.pool, rank)
+        return random_ranked(self, self.rng, self.pool, rank)
 
 
 class ShortestNoreusePath(LongestPath):
@@ -412,7 +428,7 @@ class ShortestNoreusePath(LongestPath):
             (-calc_reuse(path[0], test_case_pairs) - calc_reuse(path[1], test_case_pairs),
              # highest reuse/longest path
              size(path[0]) + size(path[1]))
-        return random_ranked(self.rng, self.pool, rank)
+        return random_ranked(self, self.rng, self.pool, rank)
 
 
 def order_path_pair(path_a, path_b, pb):
@@ -613,8 +629,7 @@ if __name__ == "__main__":
     seed(RNGseed)
 
     # LongestPath and LongestMayMerge seem identical.
-    hs = [LongestMayMerge, LongestPath, LongestBool, LongestBoolMay, RandomReuser]
-    # hs = [ShortestPathMerge]
+    hs = [LongestMayMerge, LongestPath, LongestBool, LongestBoolMay, LongestBetterSize, RandomReuser]
     # f = tcasii.makeLarge(tcasii.D1)
     # allKeys, plot_data, t_list = run_experiment((maxRounds, rngRounds), hs, [f], [len(f.inputs)], run_one_pathsearch)
     # t_list = execution time
