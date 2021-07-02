@@ -23,6 +23,29 @@ def better_size(tcs, pairs):
     res = (conditions(p0) | conditions(p1)) - conditions_tcs(tcs)
     return len(res)
 
+
+def better_size2(tcs, pairs):
+    # type: (dict, tuple) -> int
+    # |(conditions(p0) \ conditions(tcs)| + |(conditions(p1) \ conditions(tcs)|
+
+    def conditions(pi):
+        # type: (dict) -> set
+        # returns all the conditions c where pi[c] != '?'
+        return {c for c in pi.keys() if pi[c] is not None}
+
+    def conditions_tcs(tcs):
+        # type: (dict) -> set
+        # returns (conditions(p0) ∪ conditions(p1) for all c in tcs[c] = (p0, p1)
+
+        res = set()
+        for p in tcs.values():
+             res.union(conditions(p[0]) | conditions(p[1]))
+        return res
+
+    p0, p1 = pairs
+    return len(conditions(p0) - conditions_tcs(tcs)) + (len(conditions(p1) - conditions_tcs(tcs)))
+
+
 # def equal(path_1, path_2):
 #     # type: (dict, dict) -> bool
 #     # path_1 = {a: 0, b: None, c: 0}

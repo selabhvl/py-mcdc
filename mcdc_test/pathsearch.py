@@ -16,10 +16,10 @@ from sortedcontainers import SortedList
 import tcasii
 from comparePlotResults import compareresult
 from vsplot import plot
-from mcdctestgen import run_experiment, calc_reuse, calc_may_reuse, better_size
+from mcdctestgen import run_experiment, calc_reuse, calc_may_reuse
 from pyeda.boolalg.bdd import _path2point, BDDNODEZERO, BDDNODEONE, BDDZERO, BDDONE
 from mcdc_helpers import uniformize, merge, instantiate, unique_tests, size, merge_Maybe_except_c, negate, \
-    is_uniformized, lrlr, xor, replace_final_question_marks
+    is_uniformized, lrlr, xor, replace_final_question_marks, better_size, better_size2
 
 logger = None  # lazy
 
@@ -346,6 +346,21 @@ class LongestBetterSize(LongestPath):
         return m01, m10
 
 
+class LongestBetterSize2(LongestBetterSize):
+    def reconsider_best_of_the_worst(self, test_case_pairs):
+        def rank(path):
+            return (-calc_reuse(path[0], test_case_pairs) - calc_reuse(path[1], test_case_pairs),
+                    # highest reuse/longest path
+                    -better_size2(test_case_pairs, path)
+                    )
+        el = random_ranked(self, self.rng, self.pool, rank)
+        m01 = merge_Maybe_except_c(self.c, el[0], el[1])
+        assert m01 is not None
+        m10 = m01.copy()  # Quickly(?) construct partner
+        m10[self.c] = (m10[self.c] + 1) % 2  # probably José's right.
+        return m01, m10
+
+
 class LongestBool(LongestPath):
     def reconsider_best_of_the_worst(self, test_case_pairs):
         def rank(path):
@@ -629,7 +644,7 @@ if __name__ == "__main__":
     seed(RNGseed)
 
     # LongestPath and LongestMayMerge seem identical.
-    hs = [LongestMayMerge, LongestPath, LongestBool, LongestBoolMay, LongestBetterSize, RandomReuser]
+    hs = [LongestMayMerge, LongestPath, LongestBool, LongestBoolMay, LongestBetterSize, LongestBetterSize, RandomReuser]
     # f = tcasii.makeLarge(tcasii.D1)
     # allKeys, plot_data, t_list = run_experiment((maxRounds, rngRounds), hs, [f], [len(f.inputs)], run_one_pathsearch)
     # t_list = execution time
