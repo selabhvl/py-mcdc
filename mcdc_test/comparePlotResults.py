@@ -1,3 +1,6 @@
+import sys
+from vsplot import load_resultMap
+
 
 def compareresult(hs):
     BoolTF = map(lambda vals: map(lambda v: v == min(vals), vals), zip(*hs))
@@ -18,5 +21,24 @@ def compareresult_using_list_comprh(hs):
 
     return num_times_hi_is_best
 
-# Result = compareresult(h2)
-# print(Result)
+
+def extract_results(resultMap):
+    result = []
+    for (bool_func, histogram) in resultMap.items():
+        expected_value = sum(map(lambda kv: (kv[0] - len(bool_func.inputs)) * kv[1], histogram))
+        result += [expected_value]
+    return result
+
+
+if __name__ == "__main__":
+    chart_1_csv = sys.argv[1]
+    chart_2_csv = sys.argv[2]
+    resultMap_chart_1, _ = load_resultMap(chart_1_csv)
+    resultMap_chart_2, _ = load_resultMap(chart_2_csv)
+    h_1 = extract_results(resultMap_chart_1)
+    h_2 = extract_results(resultMap_chart_2)
+
+    # Compare heuristics h_1 and h_2
+    heuristics = [h_1, h_2]
+    res = compareresult(heuristics)
+    print("H1 better than H2: {0}\nH2 better than H1: {1}".format(res[0], res[1]))
