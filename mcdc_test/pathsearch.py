@@ -292,9 +292,6 @@ class RandomReuser(Reuser):
 
     def reconsider_best_of_the_worst(self, _test_case_pairs):
         if len(self.pool) > 1:
-            # We didn't find anything suitable.
-            # Overwrite last result with a random choice,
-            #  or whatever.
             return random_ranked(self, self.rng, self.pool, lambda _: True)
         else:
             return random_ranked(self, self.rng, self.pool_all, lambda _: True)
@@ -468,7 +465,6 @@ def find_existing_candidates(f, c, test_case_pairs):
     test_cases_to_false = [(p0, False) for (p0, _) in test_case_pairs.values()]
     test_cases_to_true = [(p1, True) for (_, p1) in test_case_pairs.values()]
     test_cases = test_cases_to_true + test_cases_to_false
-    candidates = []
     for tc, b in test_cases:
         # tc[c] = 0/1 or None
         if tc[c] is not None:
@@ -479,15 +475,24 @@ def find_existing_candidates(f, c, test_case_pairs):
             # So f.restrict(tc) != f.restrict(tc_x) is not enough for adding (tc, tc_x) as candidate
             # to the 'candidates' list. We have to ensure that the result of the evaluation is 0/1.
             val_1 = f.restrict(tc)
+            assert (val_1 == BDDNODEZERO and not b) or (val_1 == BDDNODEONE and b)
             val_2 = f.restrict(tc_x)
+            # if not b:
+            #    for res in val_2.satisfy_all():
+            #        yield ...
+            # else:
+            #    Or negate?
+            #    def satisfy_all(self):
+            #        for path in _iter_all_paths(self.node, BDDNODEZERO):
+            #            yield _path2point(path)
             if val_1 != val_2 and {val_1, val_2} == {BDDNODEZERO, BDDNODEONE}:
                 # Add the test cases for condition 'c'
                 if b:
                     cand = (tc_x, tc.copy())
                 else:
                     cand = (tc.copy(), tc_x)
-                candidates.append(cand)
-    return candidates
+                yield cand
+    return
 
 
 def run_one_pathsearch(f, reuse_h, rng):
@@ -644,7 +649,7 @@ if __name__ == "__main__":
     seed(RNGseed)
 
     # LongestPath and LongestMayMerge seem identical.
-    hs = [LongestMayMerge, LongestPath, LongestBool, LongestBoolMay, LongestBetterSize, LongestBetterSize, RandomReuser]
+    hs = [LongestMayMerge, LongestPath, LongestBool, LongestBoolMay, LongestBetterSize, LongestBetterSize2, RandomReuser]
     # f = tcasii.makeLarge(tcasii.D1)
     # allKeys, plot_data, t_list = run_experiment((maxRounds, rngRounds), hs, [f], [len(f.inputs)], run_one_pathsearch)
     # t_list = execution time
