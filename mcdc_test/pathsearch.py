@@ -316,7 +316,11 @@ class LongestPath:
 
     def reconsider_best_of_the_worst(self, test_case_pairs):
         def rank(path):
-            return (-calc_reuse(path[0], test_case_pairs) - calc_reuse(path[1], test_case_pairs),
+            r0 = calc_reuse(path[0], test_case_pairs)
+            r1 = calc_reuse(path[1], test_case_pairs)
+            # XXX: not always true
+            # assert r0 + r1 == max(r0, r1), self.__class__.__name__ + str((r0, r1))
+            return (-r0 - r1,
                     # highest reuse/longest path
                     -size(path[0]) - size(path[1])
                     )
@@ -475,7 +479,7 @@ def find_existing_candidates(f, c, test_case_pairs):
             # So f.restrict(tc) != f.restrict(tc_x) is not enough for adding (tc, tc_x) as candidate
             # to the 'candidates' list. We have to ensure that the result of the evaluation is 0/1.
             val_1 = f.restrict(tc)
-            assert (val_1 == BDDNODEZERO and not b) or (val_1 == BDDNODEONE and b)
+            assert (val_1 == BDDNODEZERO and not b) or (val_1 == BDDNODEONE and b) or val_1 not in {BDDNODEZERO, BDDNODEZERO}
             val_2 = f.restrict(tc_x)
             # if not b:
             #    for res in val_2.satisfy_all():
@@ -601,7 +605,8 @@ def run_one_pathsearch(f, reuse_h, rng):
         assert is_subset(c, llist_1, llist_2, test_case_pairs), \
             "Not a proper subset: {0}".format([(lrlr(fs, pair[0]), lrlr(fs, pair[1])) for pair in dif])
 
-        result = result_ex_cand if len(llist_1) > 0 else result
+        # XXX result = result_ex_cand if len(llist_1) > 0 else result
+
         # Actually: Or is it even stronger? All of those in the original approach that have reuse > 0 are EXACTLY José's!
         # TODO: assert that all OTHER old results have reuse = 0.
         # (We know that there exist n+1 solutions that we would only find if we would pick the right reuse=0 now.)
