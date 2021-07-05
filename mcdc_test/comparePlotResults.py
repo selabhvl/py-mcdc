@@ -31,8 +31,8 @@ def results_better(hs):
 
     hs_array = map(np.array, hs)
     # permutations('ABCD', 2) == [AB AC AD BA BC BD CA CB CD DA DB DC]
-    per = permutations(hs_array, 2)
-    return [sum(np.less(h_i, h_j)) for (h_i, h_j) in per]
+    per = permutations(enumerate(hs_array), 2)
+    return [((i, j), sum(np.less(h_i, h_j))) for ((i, h_i), (j, h_j)) in per]
 
 
 def results_equal(hs):
@@ -42,8 +42,8 @@ def results_equal(hs):
 
     hs_array = map(np.array, hs)
     # permutations('ABCD', 2) == [AB AC AD BA BC BD CA CB CD DA DB DC]
-    per = permutations(hs_array, 2)
-    return [sum(np.equal(h_i, h_j)) for (h_i, h_j) in per]
+    per = permutations(enumerate(hs_array), 2)
+    return [((i, j), sum(np.equal(h_i, h_j))) for ((i, h_i), (j, h_j)) in per]
 
 
 def results_better_two_heuristics(hs):
@@ -73,6 +73,7 @@ def extract_results(resultMap):
 
 
 if __name__ == "__main__":
+    assert len(sys.argv) == 3
     chart_1_csv = sys.argv[1]
     chart_2_csv = sys.argv[2]
     resultMap_chart_1, _ = load_resultMap(chart_1_csv)
@@ -87,4 +88,6 @@ if __name__ == "__main__":
     equal = results_equal(heuristics)
     print("H1 better or equal than H2: {0}\nH2 better or equal than H1: {1}".format(better_equal[0], better_equal[1]))
     print("H1 better than H2: {0}\nH2 better than H1: {1}".format(better[0], better[1]))
+    print(better)
     print("H1 equal than H2: {0}\nH2 equal than H1: {1}".format(equal[0], equal[1]))
+    print(equal)
