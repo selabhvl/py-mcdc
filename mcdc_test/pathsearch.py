@@ -14,7 +14,7 @@ from more_itertools import partition
 from sortedcontainers import SortedList
 
 import tcasii
-from comparePlotResults import compareresult
+from comparePlotResults import compareresult, results_better
 from vsplot import plot
 from mcdctestgen import run_experiment, calc_reuse, calc_may_reuse
 from pyeda.boolalg.bdd import _path2point, BDDNODEZERO, BDDNODEONE, BDDZERO, BDDONE
@@ -320,7 +320,7 @@ class LongestPath:
             r1 = calc_reuse(path[1], test_case_pairs)
             # XXX: not always true
             # assert r0 + r1 == max(r0, r1), self.__class__.__name__ + str((r0, r1))
-            return (-r0 - r1,
+            return (r0 > 0 and r1 > 0, -r0 - r1,
                     # highest reuse/longest path
                     -size(path[0]) - size(path[1])
                     )
@@ -335,7 +335,9 @@ class LongestPath:
 class LongestBetterSize(LongestPath):
     def reconsider_best_of_the_worst(self, test_case_pairs):
         def rank(path):
-            return (-calc_reuse(path[0], test_case_pairs) - calc_reuse(path[1], test_case_pairs),
+            r0 = calc_reuse(path[0], test_case_pairs)
+            r1 = calc_reuse(path[1], test_case_pairs)
+            return (r0 > 0 and r1 > 0, -r0 - r1,
                     # highest reuse/longest path
                     -better_size(test_case_pairs, path)
                     )
@@ -350,7 +352,9 @@ class LongestBetterSize(LongestPath):
 class LongestBetterSize2(LongestBetterSize):
     def reconsider_best_of_the_worst(self, test_case_pairs):
         def rank(path):
-            return (-calc_reuse(path[0], test_case_pairs) - calc_reuse(path[1], test_case_pairs),
+            r0 = calc_reuse(path[0], test_case_pairs)
+            r1 = calc_reuse(path[1], test_case_pairs)
+            return (r0 > 0 and r1 > 0, -r0 - r1,
                     # highest reuse/longest path
                     -better_size2(test_case_pairs, path)
                     )
@@ -365,7 +369,9 @@ class LongestBetterSize2(LongestBetterSize):
 class LongestBool(LongestPath):
     def reconsider_best_of_the_worst(self, test_case_pairs):
         def rank(path):
-            return (not (calc_reuse(path[0], test_case_pairs) + calc_reuse(path[1], test_case_pairs) > 0),
+            r0 = calc_reuse(path[0], test_case_pairs)
+            r1 = calc_reuse(path[1], test_case_pairs)
+            return (r0 > 0 and r1 > 0, not r0 + r1 > 0,
                     # Since False < True, if there is reuse, we need False, so that it goes to the front.
                     # longest path
                     -size(path[0]) - size(path[1])
@@ -382,9 +388,11 @@ class LongestMayMerge(LongestPath):
     def reconsider_best_of_the_worst(self, test_case_pairs):
         def rank(path):
             # `calc_may_reuse()` is much slower then just `calc_reuse()`.
-            return (-calc_may_reuse(path[0], test_case_pairs) - calc_may_reuse(path[1], test_case_pairs),
-             # highest reuse/longest path
-             -size(path[0]) - size(path[1]))
+            r0 = calc_may_reuse(path[0], test_case_pairs)
+            r1 = calc_may_reuse(path[1], test_case_pairs)
+            return (r0 > 0 and r1 > 0, -r0 - r1,
+                 # highest reuse/longest path
+                 -size(path[0]) - size(path[1]))
         el = random_ranked(self, self.rng, self.pool, rank)
         m01 = merge_Maybe_except_c(self.c, el[0], el[1])
         assert m01 is not None
@@ -397,9 +405,11 @@ class LongestBoolMay(LongestMayMerge):
     def reconsider_best_of_the_worst(self, test_case_pairs):
         def rank(path):
             # `calc_may_reuse()` is much slower then just `calc_reuse()`.
-            return (not (calc_may_reuse(path[0], test_case_pairs) + calc_may_reuse(path[1], test_case_pairs) > 0),
-             # highest reuse/longest path
-             -size(path[0]) - size(path[1]))
+            r0 = calc_may_reuse(path[0], test_case_pairs)
+            r1 = calc_may_reuse(path[1], test_case_pairs)
+            return (r0 > 0 and r1 > 0, -r0 - r1,
+                 # highest reuse/longest path
+                 -size(path[0]) - size(path[1]))
         el = random_ranked(self, self.rng, self.pool, rank)
         m01 = merge_Maybe_except_c(self.c, el[0], el[1])
         assert m01 is not None
@@ -678,7 +688,7 @@ if __name__ == "__main__":
         return result_vec
 
     ls = list(map(only_nplus1, plot_data))
-    print(compareresult(ls))
+    print(results_better(ls))
 
     for (hi, resultMap), t in zip(plot_data, t_list):
         # Gnuplot:
