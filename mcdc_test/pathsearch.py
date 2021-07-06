@@ -14,7 +14,7 @@ from more_itertools import partition
 from sortedcontainers import SortedList
 
 import tcasii
-from comparePlotResults import compareresult, results_better
+from comparePlotResults import compareresult, results_better, results_better_n_plus_1
 from vsplot import plot
 from mcdctestgen import run_experiment, calc_reuse, calc_may_reuse
 from pyeda.boolalg.bdd import _path2point, BDDNODEZERO, BDDNODEONE, BDDZERO, BDDONE
@@ -689,6 +689,7 @@ if __name__ == "__main__":
 
     ls = list(map(only_nplus1, plot_data))
     print(results_better(ls))
+    print(results_better_n_plus_1(ls, tcasii.tcas_num_cond))
 
     for (hi, resultMap), t in zip(plot_data, t_list):
         # Gnuplot:
