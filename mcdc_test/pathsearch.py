@@ -290,11 +290,15 @@ class RandomReuser(Reuser):
                 self.pool_all.append(pair)
         return None
 
-    def reconsider_best_of_the_worst(self, _test_case_pairs):
+    def reconsider_best_of_the_worst(self, test_case_pairs):
+        def rank(path):
+            r0 = calc_reuse(path[0], test_case_pairs)
+            r1 = calc_reuse(path[1], test_case_pairs)
+            return not (r0 > 0 and r1 > 0)
         if len(self.pool) > 1:
-            return random_ranked(self, self.rng, self.pool, lambda _: True)
+            return random_ranked(self, self.rng, self.pool, rank)
         else:
-            return random_ranked(self, self.rng, self.pool_all, lambda _: True)
+            return random_ranked(self, self.rng, self.pool_all, rank)
 
 
 class LongestPath:
