@@ -7,13 +7,14 @@ from tcasii import tcas, tcas_num_cond, tcas_names
 
 # Initialize the lists for X and Y
 fig, ax = plt.subplots()
-data1 = pd.DataFrame(pd.read_csv('~/COEMS/py-mcdc/mcdc_test/PAPER/VS-LongestBool.11-1000-6.csv',header=0, delimiter=',', index_col=0))
-data2 = pd.DataFrame(pd.read_csv('~/COEMS/py-mcdc/mcdc_test/PAPER/VS-LongestPath.11-1000-6.csv',header=0, delimiter=',', index_col=0))
-data3 = pd.DataFrame(pd.read_csv('~/COEMS/py-mcdc/mcdc_test/PAPER/VS-LongestBoolMay.11-1000-6.csv',header=0, delimiter=',', index_col=0))
-data4 = pd.DataFrame(pd.read_csv('~/COEMS/py-mcdc/mcdc_test/PAPER/VS-LongestMayMerge.11-1000-6.csv',header=0, delimiter=',', index_col=0))
-data5 = pd.DataFrame(pd.read_csv('~/COEMS/py-mcdc/mcdc_test/PAPER/VS-LongestBetterSize.11-1000-6.csv',header=0, delimiter=',', index_col=0))
-data6 = pd.DataFrame(pd.read_csv('~/COEMS/py-mcdc/mcdc_test/PAPER/VS-RandomReuser.11-1000-6.csv',header=0, delimiter=',', index_col=0))
-#data = pd.read_csv('~/COEMS/py-mcdc/mcdc_test/PAPER/VS-RandomReuser.11-1000-6.csv',header=0, delimiter=',', index_col=0)
+data1 = pd.DataFrame(pd.read_csv('~/COEMS/py-mcdc/mcdc_test/PAPER2/VS-LongestBool.11-1000-6.csv',header=0, delimiter=',', index_col=0))
+data2 = pd.DataFrame(pd.read_csv('~/COEMS/py-mcdc/mcdc_test/PAPER2/VS-LongestPath.11-1000-6.csv',header=0, delimiter=',', index_col=0))
+data3 = pd.DataFrame(pd.read_csv('~/COEMS/py-mcdc/mcdc_test/PAPER2/VS-LongestBoolMay.11-1000-6.csv',header=0, delimiter=',', index_col=0))
+data4 = pd.DataFrame(pd.read_csv('~/COEMS/py-mcdc/mcdc_test/PAPER2/VS-LongestMayMerge.11-1000-6.csv',header=0, delimiter=',', index_col=0))
+data5 = pd.DataFrame(pd.read_csv('~/COEMS/py-mcdc/mcdc_test/PAPER2/VS-LongestBetterSize.11-1000-6.csv',header=0, delimiter=',', index_col=0))
+data6 = pd.DataFrame(pd.read_csv('~/COEMS/py-mcdc/mcdc_test/PAPER2/VS-RandomReuser.11-1000-6.csv',header=0, delimiter=',', index_col=0))
+data7 = pd.DataFrame(pd.read_csv('~/COEMS/py-mcdc/mcdc_test/PAPER2/VS-LongestBetterSize2.11-1000-6.csv',header=0, delimiter=',', index_col=0))
+#data = pd.read_csv('~/COEMS/py-mcdc/mcdc_test/PAPER2/VS-RandomReuser.11-1000-6.csv',header=0, delimiter=',', index_col=0)
 
 #df1 = pd.DataFrame(data1)
 #df2 = pd.DataFrame(data2)
@@ -24,6 +25,7 @@ df3 = data3.T
 df4 = data4.T
 df5 = data5.T
 df6 = data6.T
+df7 = data7.T
 
 df1.dropna(inplace=True)
 df2.dropna(inplace=True)
@@ -31,6 +33,7 @@ df3.dropna(inplace=True)
 df4.dropna(inplace=True)
 df5.dropna(inplace=True)
 df6.dropna(inplace=True)
+df7.dropna(inplace=True)
 
 
 LongestBool = list(df1.iloc[:, 0] * 100)
@@ -58,22 +61,29 @@ LongestBetterSize1 = list(df5.iloc[:, 1] * 100)
 LongestBetterSize2 = list(df5.iloc[:, 2] * 100)
 LongestBetterSize3 = list(df5.iloc[:, 3] * 100)
 
+LongestBetter2Size = list(df7.iloc[:, 0] * 100)
+LongestBetter2Size1 = list(df7.iloc[:, 1] * 100)
+LongestBetter2Size2 = list(df7.iloc[:, 2] * 100)
+LongestBetter2Size3 = list(df7.iloc[:, 3] * 100)
+
 RandomReuser = list(df6.iloc[:, 0] * 100)
 RandomReuser1 = list(df6.iloc[:, 1] * 100)
 RandomReuser2 = list(df6.iloc[:, 2] * 100)
 RandomReuser3 = list(df6.iloc[:, 3] * 100)
 
-w = 0.15
+w = 0.12
 # Plot the data using bar() method
 X = np.arange(1,21)  # the label locations
 labels =dict(zip(tcas_names,tcas_num_cond))
 #_X = np.arange(len(labels))
-plt.bar(X - 2 * w, LongestBool, w, label='LPB', color='c')
-plt.bar(X - w, Longest, w, label='LPN', color='m')
-plt.bar(X, LongestBoolMay, w, label='LMMB', color='y')
-plt.bar(X + w, LongestMayMerge, w,  label='LMMN', color='g')
-plt.bar(X + 2 * w, LongestBetterSize, w, label='LPBS', color='r')
+plt.bar(X - 3 * w, LongestBool, w, label='LPB', color='c')
+plt.bar(X - 2 * w, Longest, w, label='LPN', color='m')
+plt.bar(X - w, LongestBoolMay, w, label='LMMB', color='y')
+plt.bar(X, LongestMayMerge, w,  label='LMMN', color='g')
+plt.bar(X + w, LongestBetterSize, w, label='LPBS1', color='b')
+plt.bar(X + 2 * w, LongestBetter2Size, w, label='LPBS2', color='r')
 plt.bar(X + 3 * w, RandomReuser, w, label='RR',color='k')
+        
 
 ax.set_title('% of n+1 solutions, permutations:1000, Runs:6')
 ax.set_ylabel('Percentage of n+1 TCs generated (%)')
@@ -81,7 +91,7 @@ ax.set_xlabel('TCASII decisions')
 ax.set_xticks(X)
 ax.set_xticklabels(labels.keys(), rotation = 'vertical', fontsize=8)
 ax.legend()
-plt.savefig('PAPER/RESULT/Compareheuristics1.png', dpi=150)
+plt.savefig('PAPER2/RESULT/Compareheuristics1.png', dpi=150)
 plt.show()
 
 # Show the plot

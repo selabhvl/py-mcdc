@@ -320,7 +320,7 @@ class LongestPath:
             r1 = calc_reuse(path[1], test_case_pairs)
             # XXX: not always true
             # assert r0 + r1 == max(r0, r1), self.__class__.__name__ + str((r0, r1))
-            return (r0 > 0 and r1 > 0, -r0 - r1,
+            return (not(r0 > 0 and r1), -r0 - r1,
                     # highest reuse/longest path
                     -size(path[0]) - size(path[1])
                     )
@@ -337,7 +337,7 @@ class LongestBetterSize(LongestPath):
         def rank(path):
             r0 = calc_reuse(path[0], test_case_pairs)
             r1 = calc_reuse(path[1], test_case_pairs)
-            return (r0 > 0 and r1 > 0, -r0 - r1,
+            return (not(r0 > 0 and r1), -r0 - r1,
                     # highest reuse/longest path
                     -better_size(test_case_pairs, path)
                     )
@@ -354,7 +354,7 @@ class LongestBetterSize2(LongestBetterSize):
         def rank(path):
             r0 = calc_reuse(path[0], test_case_pairs)
             r1 = calc_reuse(path[1], test_case_pairs)
-            return (r0 > 0 and r1 > 0, -r0 - r1,
+            return (not(r0 > 0 and r1), -r0 - r1,
                     # highest reuse/longest path
                     -better_size2(test_case_pairs, path)
                     )
@@ -371,7 +371,7 @@ class LongestBool(LongestPath):
         def rank(path):
             r0 = calc_reuse(path[0], test_case_pairs)
             r1 = calc_reuse(path[1], test_case_pairs)
-            return (r0 > 0 and r1 > 0, not r0 + r1 > 0,
+            return (not(r0 > 0 and r1), not r0 + r1 > 0,
                     # Since False < True, if there is reuse, we need False, so that it goes to the front.
                     # longest path
                     -size(path[0]) - size(path[1])
@@ -390,7 +390,7 @@ class LongestMayMerge(LongestPath):
             # `calc_may_reuse()` is much slower then just `calc_reuse()`.
             r0 = calc_may_reuse(path[0], test_case_pairs)
             r1 = calc_may_reuse(path[1], test_case_pairs)
-            return (r0 > 0 and r1 > 0, -r0 - r1,
+            return (not(r0 > 0 and r1), -r0 - r1,
                  # highest reuse/longest path
                  -size(path[0]) - size(path[1]))
         el = random_ranked(self, self.rng, self.pool, rank)
@@ -407,7 +407,7 @@ class LongestBoolMay(LongestMayMerge):
             # `calc_may_reuse()` is much slower then just `calc_reuse()`.
             r0 = calc_may_reuse(path[0], test_case_pairs)
             r1 = calc_may_reuse(path[1], test_case_pairs)
-            return (r0 > 0 and r1 > 0, -r0 - r1,
+            return (not(r0 > 0 and r1), -r0 - r1,
                  # highest reuse/longest path
                  -size(path[0]) - size(path[1]))
         el = random_ranked(self, self.rng, self.pool, rank)
