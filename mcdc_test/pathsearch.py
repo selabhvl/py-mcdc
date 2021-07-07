@@ -17,7 +17,7 @@ import tcasii
 from comparePlotResults import compareresult, results_better, results_better_n_plus_1
 from vsplot import plot
 from mcdctestgen import run_experiment, calc_reuse, calc_may_reuse
-from pyeda.boolalg.bdd import _path2point, BDDNODEZERO, BDDNODEONE, BDDZERO, BDDONE
+from pyeda.boolalg.bdd import _path2point, BDDNODEZERO, BDDNODEONE, BDDZERO, BDDONE, _iter_all_paths
 from mcdc_helpers import uniformize, merge, instantiate, unique_tests, size, merge_Maybe_except_c, negate, \
     is_uniformized, lrlr, xor, replace_final_question_marks, better_size, better_size2
 
@@ -220,7 +220,7 @@ def random_ranked(cls, rng, choices, rank):
     pred_0 = rank(the_list[0])
     els_it = takewhile(lambda p: rank(p) == pred_0, the_list)
     els = list(els_it)
-    i = rng.randrange(len(els)-1)
+    i = rng.randint(0, len(els)-1)
     logger = logging.getLogger("MCDC")
     logger.debug("{}: Picking index {}/{}".format(cls.__class__.__name__, i, len(els)))
     # print("{}: Picking index {}/{}".format(cls.__class__.__name__, i, len(els)))
@@ -479,6 +479,11 @@ def order_path_pair(path_a, path_b, pb):
 
 def find_existing_candidates(f, c, test_case_pairs):
     # type: (BinaryDecisionDiagram, BDDVariable, dict) -> list
+
+    def unsatisfy_all(f):
+        for path in _iter_all_paths(f.node, BDDNODEZERO):
+            yield _path2point(path)
+
     # Get a unique instance for each test case that we have generated until now
     test_cases_to_false = [(p0, False) for (p0, _) in test_case_pairs.values()]
     test_cases_to_true = [(p1, True) for (_, p1) in test_case_pairs.values()]
@@ -493,23 +498,35 @@ def find_existing_candidates(f, c, test_case_pairs):
             # So f.restrict(tc) != f.restrict(tc_x) is not enough for adding (tc, tc_x) as candidate
             # to the 'candidates' list. We have to ensure that the result of the evaluation is 0/1.
             val_1 = f.restrict(tc)
-            assert (val_1 == BDDNODEZERO and not b) or (val_1 == BDDNODEONE and b) or val_1 not in {BDDNODEZERO, BDDNODEZERO}
+            assert (val_1.is_zero() and not b) or (val_1.is_one() and b)
             val_2 = f.restrict(tc_x)
-            # if not b:
-            #    for res in val_2.satisfy_all():
-            #        yield ...
-            # else:
-            #    Or negate?
-            #    def satisfy_all(self):
-            #        for path in _iter_all_paths(self.node, BDDNODEZERO):
-            #            yield _path2point(path)
-            if val_1 != val_2 and {val_1, val_2} == {BDDNODEZERO, BDDNODEONE}:
-                # Add the test cases for condition 'c'
-                if b:
-                    cand = (tc_x, tc.copy())
+            if not b:
+                if val_2.is_one():
+                    yield (tc.copy(), tc_x)
                 else:
-                    cand = (tc.copy(), tc_x)
-                yield cand
+                    for res in val_2.satisfy_all():
+                        val_2.restrict(res)
+                        if val_2.is_one():
+                            # yield (tc_x + res, tc + res)
+                            print("res: {0}".format(res))
+                            yield (tc_x.update(res), tc.update(res))
+            else:
+                if val_2.is_zero():
+                    yield (tc_x, tc.copy())
+                else:
+                    for res in unsatisfy_all(val_2):
+                        val_2.restrict(res)
+                        if val_2.is_zero():
+                            print("res: {0}".format(res))
+                            yield (tc.update(res), tc_x.update(res))
+
+            # if val_1 != val_2 and {val_1, val_2} == {BDDNODEZERO, BDDNODEONE}:
+            #     # Add the test cases for condition 'c'
+            #     if b:
+            #         cand = (tc_x, tc.copy())
+            #     else:
+            #         cand = (tc.copy(), tc_x)
+            #     yield cand
     return
 
 
@@ -610,7 +627,10 @@ def run_one_pathsearch(f, reuse_h, rng):
         # l1 = [(p0, p1), (p2, p3)]
         # l2 = [(p4, p1), (p5, p3)]
 
+        # set(llist_1) - set(llist_2)
         dif = difference(c, llist_1, llist_2, test_case_pairs)
+        assert len(dif) == 0
+        # assert len(llist_1) == len(llist_2), "{0} {1}".format(len(llist_1), len(llist_2))
         for pair in dif:
             assert f.restrict(pair[0]) == BDDZERO, lrlr(fs, pair[0])
             assert f.restrict(pair[1]) == BDDONE, lrlr(fs, pair[1])
@@ -619,7 +639,7 @@ def run_one_pathsearch(f, reuse_h, rng):
         assert is_subset(c, llist_1, llist_2, test_case_pairs), \
             "Not a proper subset: {0}".format([(lrlr(fs, pair[0]), lrlr(fs, pair[1])) for pair in dif])
 
-        # XXX result = result_ex_cand if len(llist_1) > 0 else result
+        result = result_ex_cand if len(llist_1) > 0 else result
 
         # Actually: Or is it even stronger? All of those in the original approach that have reuse > 0 are EXACTLY José's!
         # TODO: assert that all OTHER old results have reuse = 0.
