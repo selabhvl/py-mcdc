@@ -7,14 +7,15 @@ from tcasii import tcas, tcas_num_cond, tcas_names
 
 # Initialize the lists for X and Y
 fig, ax = plt.subplots()
-data1 = pd.DataFrame(pd.read_csv('~/COEMS/py-mcdc/mcdc_test/PAPER2/VS-LongestBool.11-1000-6.csv',header=0, delimiter=',', index_col=0))
-data2 = pd.DataFrame(pd.read_csv('~/COEMS/py-mcdc/mcdc_test/PAPER2/VS-LongestPath.11-1000-6.csv',header=0, delimiter=',', index_col=0))
-data3 = pd.DataFrame(pd.read_csv('~/COEMS/py-mcdc/mcdc_test/PAPER2/VS-LongestBoolMay.11-1000-6.csv',header=0, delimiter=',', index_col=0))
-data4 = pd.DataFrame(pd.read_csv('~/COEMS/py-mcdc/mcdc_test/PAPER2/VS-LongestMayMerge.11-1000-6.csv',header=0, delimiter=',', index_col=0))
-data5 = pd.DataFrame(pd.read_csv('~/COEMS/py-mcdc/mcdc_test/PAPER2/VS-LongestBetterSize.11-1000-6.csv',header=0, delimiter=',', index_col=0))
-data6 = pd.DataFrame(pd.read_csv('~/COEMS/py-mcdc/mcdc_test/PAPER2/VS-RandomReuser.11-1000-6.csv',header=0, delimiter=',', index_col=0))
-data7 = pd.DataFrame(pd.read_csv('~/COEMS/py-mcdc/mcdc_test/PAPER2/VS-LongestBetterSize2.11-1000-6.csv',header=0, delimiter=',', index_col=0))
-#data = pd.read_csv('~/COEMS/py-mcdc/mcdc_test/PAPER2/VS-RandomReuser.11-1000-6.csv',header=0, delimiter=',', index_col=0)
+
+data1 = pd.DataFrame(pd.read_csv('~/COEMS/py-mcdc/mcdc_test/pymcdc-5k-1/VS-LongestBool.11-5040-1.csv',header=0, delimiter=',', index_col=0))
+data2 = pd.DataFrame(pd.read_csv('~/COEMS/py-mcdc/mcdc_test/pymcdc-5k-1/VS-LongestPath.11-5040-1.csv',header=0, delimiter=',', index_col=0))
+data3 = pd.DataFrame(pd.read_csv('~/COEMS/py-mcdc/mcdc_test/pymcdc-5k-1/VS-LongestBoolMay.11-5040-1.csv',header=0, delimiter=',', index_col=0))
+data4 = pd.DataFrame(pd.read_csv('~/COEMS/py-mcdc/mcdc_test/pymcdc-5k-1/VS-LongestMayMerge.11-5040-1.csv',header=0, delimiter=',', index_col=0))
+data5 = pd.DataFrame(pd.read_csv('~/COEMS/py-mcdc/mcdc_test/pymcdc-5k-1/VS-LongestBetterSize.11-5040-1.csv',header=0, delimiter=',', index_col=0))
+data6 = pd.DataFrame(pd.read_csv('~/COEMS/py-mcdc/mcdc_test/pymcdc-5k-1/VS-RandomReuser.11-5040-1.csv',header=0, delimiter=',', index_col=0))
+data7 = pd.DataFrame(pd.read_csv('~/COEMS/py-mcdc/mcdc_test/pymcdc-5k-1/VS-LongestBetterSize2.11-5040-1.csv',header=0, delimiter=',', index_col=0))
+#data = pd.read_csv('~/COEMS/py-mcdc/mcdc_test/pymcdc-5k-1/VS-RandomReuser.11-5040-1.csv',header=0, delimiter=',', index_col=0)
 
 #df1 = pd.DataFrame(data1)
 #df2 = pd.DataFrame(data2)
@@ -80,18 +81,18 @@ plt.bar(X - 3 * w, LongestBool, w, label='LPB', color='c')
 plt.bar(X - 2 * w, Longest, w, label='LPN', color='m')
 plt.bar(X - w, LongestBoolMay, w, label='LMMB', color='y')
 plt.bar(X, LongestMayMerge, w,  label='LMMN', color='g')
-plt.bar(X + w, LongestBetterSize, w, label='LPBS1', color='b')
+plt.bar(X + w, LongestBetterSize, w, label='LPBS1', color='dodgerblue')
 plt.bar(X + 2 * w, LongestBetter2Size, w, label='LPBS2', color='r')
 plt.bar(X + 3 * w, RandomReuser, w, label='RR',color='k')
         
 
-ax.set_title('% of n+1 solutions, permutations:1000, Runs:6')
+ax.set_title('% of n+1 solutions, permutations:5040, Runs:1')
 ax.set_ylabel('Percentage of n+1 TCs generated (%)')
 ax.set_xlabel('TCASII decisions')
 ax.set_xticks(X)
 ax.set_xticklabels(labels.keys(), rotation = 'vertical', fontsize=8)
 ax.legend()
-plt.savefig('PAPER2/RESULT/Compareheuristics1.png', dpi=150)
+plt.savefig('pymcdc-5k-1/RESULT/Compareheuristics1.png', dpi=150)
 plt.show()
 
 # Show the plot
