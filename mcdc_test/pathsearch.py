@@ -484,6 +484,8 @@ def find_existing_candidates(f, c, test_case_pairs):
     test_cases_to_true = [(p1, True) for (_, p1) in test_case_pairs.values()]
     test_cases = test_cases_to_true + test_cases_to_false
     for tc, b in test_cases:
+        val_1 = f.restrict(tc)  # assert only
+        assert (val_1.is_zero() and not b) or (val_1.is_one() and b), (val_1, b)
         # tc[c] = 0/1 or None
         if tc[c] is not None:
             # Clone current test case
@@ -492,8 +494,6 @@ def find_existing_candidates(f, c, test_case_pairs):
             # f.restrict(tc) may return 0/1 or a new restricted BDD
             # So f.restrict(tc) != f.restrict(tc_x) is not enough for adding (tc, tc_x) as candidate
             # to the 'candidates' list. We have to ensure that the result of the evaluation is 0/1.
-            val_1 = f.restrict(tc)
-            assert (val_1.is_zero() and not b) or (val_1.is_one() and b)
             val_2 = f.restrict(tc_x)
             # if not b:
             #    for res in val_2.satisfy_all():
