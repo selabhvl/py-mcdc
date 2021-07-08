@@ -493,7 +493,7 @@ def find_existing_candidates(f, c, test_case_pairs):
             # So f.restrict(tc) != f.restrict(tc_x) is not enough for adding (tc, tc_x) as candidate
             # to the 'candidates' list. We have to ensure that the result of the evaluation is 0/1.
             val_1 = f.restrict(tc)
-            assert (val_1 == BDDNODEZERO and not b) or (val_1 == BDDNODEONE and b) or val_1 not in {BDDNODEZERO, BDDNODEZERO}
+            assert (val_1.is_zero() and not b) or (val_1.is_one() and b)
             val_2 = f.restrict(tc_x)
             # if not b:
             #    for res in val_2.satisfy_all():
