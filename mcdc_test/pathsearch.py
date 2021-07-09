@@ -299,7 +299,7 @@ class RandomReuser(Reuser):
             r0 = calc_reuse(path[0], test_case_pairs)
             r1 = calc_reuse(path[1], test_case_pairs)
             return not (r0 > 0 and r1 > 0)
-        if len(self.pool) > 1:
+        if len(self.pool) > 0:
             return random_ranked(self, self.rng, self.pool, rank)
         else:
             return random_ranked(self, self.rng, self.pool_all, rank)
@@ -330,7 +330,6 @@ class LongestPath:
         f_m10 = self.f.restrict(m10)
         m10.origs = tc_x_orig_keys.union(f_m10.inputs)
         return m10
-
 
     def reconsider_best_of_the_worst(self, test_case_pairs):
         def rank(path):
