@@ -1,6 +1,19 @@
 from functools import reduce
 
 
+class Path(dict):
+    def __init__(self, d):
+        dict.__init__(self, d)
+        self.origs = d.keys()
+
+    def size(self):
+        sum = 0
+        for k in self.origs:
+            if self[k] is not None:
+                sum += 1
+        return sum
+
+
 def better_size(tcs, pairs):
     # type: (dict, tuple) -> int
     # |(conditions(p0) ∪ conditions(p1))\conditions(tcs)|
@@ -200,7 +213,8 @@ def merge_Maybe_except_c(c_excl, path_1, path_2):
     # type: (dict, dict) -> dict
     # have_same_keys_assert(path_1,path_2)
     # print("merge:\t{0}".format(path_2))
-    path_out = dict()
+    path_out = Path(path_1)
+    path_out.origs = path_1.origs
     conditions = path_1.keys()
     for c in conditions:
         if c == c_excl:

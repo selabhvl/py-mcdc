@@ -1,4 +1,5 @@
 import collections
+import copy
 import csv
 import itertools
 import logging
@@ -7,6 +8,7 @@ import functools
 from functools import reduce
 from itertools import chain, product, repeat, accumulate, takewhile
 from random import randint, seed, Random
+from typing import Dict
 
 from graphviz import Source
 from matplotlib import pyplot as plt
@@ -19,7 +21,7 @@ from vsplot import plot
 from mcdctestgen import run_experiment, calc_reuse, calc_may_reuse
 from pyeda.boolalg.bdd import _path2point, BDDNODEZERO, BDDNODEONE, BDDZERO, BDDONE
 from mcdc_helpers import uniformize, merge, instantiate, unique_tests, size, merge_Maybe_except_c, negate, \
-    is_uniformized, lrlr, xor, replace_final_question_marks, better_size, better_size2
+    is_uniformized, lrlr, xor, replace_final_question_marks, better_size, better_size2, Path
 
 logger = None  # lazy
 
@@ -200,7 +202,7 @@ def independence_day_for_condition(f, v_c, t):
 
 
 class UseFirst:
-    def __init__(self, c, _rng):
+    def __init__(self, f, c, _rng):
         pass
 
     @staticmethod
@@ -231,10 +233,11 @@ class Reuser:
     """This class takes the first pair that has any reuse. Worst case is that we don't
     have any, in which case you get some pair that we have looked at.
     Make special provision for the root node and take the first pair we find."""
-    def __init__(self, c, rng):
+    def __init__(self, f, c, rng):
         # The pool transfers state across all (visited) i-pairs
         #   until `pick_best` is happy. We may then use this info
         #   to reconsider our choice.
+        self.f = f
         self.pool = []
         self.c = c
         self.rng = rng
@@ -275,7 +278,8 @@ class Reuser:
 
 class RandomReuser(Reuser):
     """Either we only pick randomly from those that have any reuse, or a completely random one."""
-    def __init__(self, c, rng):
+    def __init__(self, f, c, rng):
+        self.f = f
         self.pool_all = []
         self.pool = []
         self.c = c
@@ -302,11 +306,12 @@ class RandomReuser(Reuser):
 
 
 class LongestPath:
-    def __init__(self, c, rng):
+    def __init__(self, f, c, rng):
         # The pool transfers state across all (visited) i-pairs
         #   until `pick_best` is happy. We may then use this info
         #   to reconsider our choice.
         # Could be a set if we'd bother.
+        self.f = f
         self.pool = []
         self.c = c
         self.rng = rng
@@ -318,6 +323,15 @@ class LongestPath:
         # TODO: could short-cut if we spot _a_ best result (reuse = 1, max len).
         return None
 
+    def mkNegated(self, tc):
+        m10 = copy.copy(tc)  # Quickly(?) construct partner
+        tc_x_orig_keys = m10.origs - filter(lambda x: x.uniqid > self.c.uniqid, m10.origs)
+        m10[self.c] = negate(m10[self.c])
+        f_m10 = self.f.restrict(m10)
+        m10.origs = tc_x_orig_keys.union(f_m10.inputs)
+        return m10
+
+
     def reconsider_best_of_the_worst(self, test_case_pairs):
         def rank(path):
             r0 = calc_reuse(path[0], test_case_pairs)
@@ -326,13 +340,12 @@ class LongestPath:
             # assert r0 + r1 == max(r0, r1), self.__class__.__name__ + str((r0, r1))
             return (not(r0 > 0 and r1), -r0 - r1,
                     # highest reuse/longest path
-                    -size(path[0]) - size(path[1])
+                    -path[0].size() - path[1].size()
                     )
         el = random_ranked(self, self.rng, self.pool, rank)
         m01 = merge_Maybe_except_c(self.c, el[0], el[1])
         assert m01 is not None
-        m10 = m01.copy()  # Quickly(?) construct partner
-        m10[self.c] = (m10[self.c] + 1) % 2  # probably José's right.
+        m10 = self.mkNegated(m01)
         return m01, m10
 
 
@@ -348,8 +361,7 @@ class LongestBetterSize(LongestPath):
         el = random_ranked(self, self.rng, self.pool, rank)
         m01 = merge_Maybe_except_c(self.c, el[0], el[1])
         assert m01 is not None
-        m10 = m01.copy()  # Quickly(?) construct partner
-        m10[self.c] = (m10[self.c] + 1) % 2  # probably José's right.
+        m10 = self.mkNegated(m01)
         return m01, m10
 
 
@@ -365,8 +377,7 @@ class LongestBetterSize2(LongestBetterSize):
         el = random_ranked(self, self.rng, self.pool, rank)
         m01 = merge_Maybe_except_c(self.c, el[0], el[1])
         assert m01 is not None
-        m10 = m01.copy()  # Quickly(?) construct partner
-        m10[self.c] = (m10[self.c] + 1) % 2  # probably José's right.
+        m10 = self.mkNegated(m01)
         return m01, m10
 
 
@@ -378,13 +389,12 @@ class LongestBool(LongestPath):
             return (not(r0 > 0 and r1), not r0 + r1 > 0,
                     # Since False < True, if there is reuse, we need False, so that it goes to the front.
                     # longest path
-                    -size(path[0]) - size(path[1])
+                    -path[0].size() - path[1].size()
                     )
         el = random_ranked(self, self.rng, self.pool, rank)
         m01 = merge_Maybe_except_c(self.c, el[0], el[1])
         assert m01 is not None
-        m10 = m01.copy()  # Quickly(?) construct partner
-        m10[self.c] = (m10[self.c] + 1) % 2  # probably José's right.
+        m10 = self.mkNegated(m01)
         return m01, m10
 
 
@@ -396,12 +406,11 @@ class LongestMayMerge(LongestPath):
             r1 = calc_may_reuse(path[1], test_case_pairs)
             return (not(r0 > 0 and r1), -r0 - r1,
                  # highest reuse/longest path
-                 -size(path[0]) - size(path[1]))
+                 -path[0].size() - path[1].size())
         el = random_ranked(self, self.rng, self.pool, rank)
         m01 = merge_Maybe_except_c(self.c, el[0], el[1])
         assert m01 is not None
-        m10 = m01.copy()  # Quickly(?) construct partner
-        m10[self.c] = (m10[self.c] + 1) % 2  # probably José's right.
+        m10 = self.mkNegated(m01)
         return m01, m10
 
 
@@ -413,12 +422,11 @@ class LongestBoolMay(LongestMayMerge):
             r1 = calc_may_reuse(path[1], test_case_pairs)
             return (not(r0 > 0 and r1), -r0 - r1,
                  # highest reuse/longest path
-                 -size(path[0]) - size(path[1]))
+                 -path[0].size() - path[1].size())
         el = random_ranked(self, self.rng, self.pool, rank)
         m01 = merge_Maybe_except_c(self.c, el[0], el[1])
         assert m01 is not None
-        m10 = m01.copy()  # Quickly(?) construct partner
-        m10[self.c] = (m10[self.c] + 1) % 2  # probably José's right.
+        m10 = self.mkNegated(m01)
         return m01, m10
 
 
@@ -488,17 +496,21 @@ def find_existing_candidates(f, c, test_case_pairs):
     test_cases_to_true = [(p1, True) for (_, p1) in test_case_pairs.values()]
     test_cases = test_cases_to_true + test_cases_to_false
     for tc, b in test_cases:
+        assert type(tc) == Path
         val_1 = filtered_restrict(f, tc)  # assert only
         assert (val_1.is_zero() and not b) or (val_1.is_one() and b), (val_1, b)
         # tc[c] = 0/1 or None
         if tc[c] is not None:
             # Clone current test case
-            tc_x = tc.copy()
+            tc_x = copy.copy(tc)
+            assert type(tc_x) == Path
+            tc_x_orig_keys = tc_x.origs - set(filter(lambda x: x.uniqid > c.uniqid, tc_x.origs))
             tc_x[c] = negate(tc_x[c])
             # f.restrict(tc) may return 0/1 or a new restricted BDD
             # So f.restrict(tc) != f.restrict(tc_x) is not enough for adding (tc, tc_x) as candidate
             # to the 'candidates' list. We have to ensure that the result of the evaluation is 0/1.
             val_2 = filtered_restrict(f, tc_x)
+            tc_x.origs = tc_x_orig_keys.union(val_2.inputs)
             # if not b:
             #    for res in val_2.satisfy_all():
             #        yield ...
@@ -599,6 +611,7 @@ def run_one_pathsearch(f, reuse_h, rng):
             checked_ns = zip(repeat(None), ns)
         result = chain.from_iterable(map(lambda xpq: uniformize_list(prefix + xpq[0], (prefix + xpq[1][0], xpq[1][1])),
                                          pairs_from_node(f, v_c)) for _, (prefix, v_c) in checked_ns)
+        result = map(lambda p0p1: (Path(p0p1[0]), Path(p0p1[1])), result)
         # We're formatting all pairs in 'result' so that they match the same format than pairs in the 'result' list returned
         # by find_existing_candidates()
 
@@ -629,7 +642,7 @@ def run_one_pathsearch(f, reuse_h, rng):
         # TODO: assert that all OTHER old results have reuse = 0.
         # (We know that there exist n+1 solutions that we would only find if we would pick the right reuse=0 now.)
         # Use a fresh instance for every condition:
-        reuse_strategy = reuse_h(c, rng)
+        reuse_strategy = reuse_h(f, c, rng)
         for pair in result:
             assert pair[0] != pair[1]
             assert f.restrict(pair[0]) == BDDZERO, lrlr(fs, pair[0])
@@ -701,7 +714,7 @@ if __name__ == "__main__":
 
     for (hi, resultMap), t in zip(plot_data, t_list):
         # Gnuplot:
-        chart_name = 'VS-{}.{}-{}-{}'.format(hs[hi](None, None).__class__.__name__, RNGseed, maxRounds, rngRounds)
+        chart_name = 'VS-{}.{}-{}-{}'.format(hs[hi](None, None, None).__class__.__name__, RNGseed, maxRounds, rngRounds)
 
         with open('{}_resultMap.csv'.format(chart_name), 'w') as csvfile:
             result_map_writer = csv.writer(csvfile, delimiter=' ', quotechar='|', quoting=csv.QUOTE_MINIMAL)
