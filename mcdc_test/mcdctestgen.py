@@ -150,7 +150,7 @@ def satisfy_mcdc(f, heuristic, _rng):
                 (path_zero, path_one) = fcp_list[0]
 
                 # Assign test cases path_zero and path_one to condition c
-                p0, p1 = dict(path_zero), dict(path_one)
+                p0, p1 = Path(dict(path_zero)), Path(dict(path_one))
                 # TODO: seems to be missing a merge here; needs a variation on
                 #  p0 = merge(p0,p1), p1 = merge(p1,p0)
                 test_case[c] = (p0, p1)

@@ -7,11 +7,7 @@ class Path(dict):
         self.origs = d.keys()
 
     def size(self):
-        sum = 0
-        for k in self.origs:
-            if self[k] is not None:
-                sum += 1
-        return sum
+        return sum(self[k] is not None for k in self.origs)
 
 
 def better_size(tcs, pairs):
@@ -210,7 +206,7 @@ def merge(path_1, path_2):
 
 # Merges two paths if permitted (= unification), None otherwise.
 def merge_Maybe_except_c(c_excl, path_1, path_2):
-    # type: (dict, dict) -> dict
+    # type: (BDDVariable, dict, dict) -> dict
     # have_same_keys_assert(path_1,path_2)
     # print("merge:\t{0}".format(path_2))
     path_out = Path(path_1)
