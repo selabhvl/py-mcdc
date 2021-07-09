@@ -19,7 +19,7 @@ import tcasii
 from comparePlotResults import compareresult, results_better, results_better_n_plus_1
 from vsplot import plot
 from mcdctestgen import run_experiment, calc_reuse, calc_may_reuse
-from pyeda.boolalg.bdd import _path2point, BDDNODEZERO, BDDNODEONE, BDDZERO, BDDONE
+from pyeda.boolalg.bdd import _path2point, BDDNODEZERO, BDDNODEONE, BDDZERO, BDDONE, _iter_all_paths, bdd2expr
 from mcdc_helpers import uniformize, merge, instantiate, unique_tests, size, merge_Maybe_except_c, negate, \
     is_uniformized, lrlr, xor, replace_final_question_marks, better_size, better_size2, Path
 
@@ -222,7 +222,7 @@ def random_ranked(cls, rng, choices, rank):
     pred_0 = rank(the_list[0])
     els_it = takewhile(lambda p: rank(p) == pred_0, the_list)
     els = list(els_it)
-    i = rng.randrange(len(els)-1)
+    i = rng.randint(0, len(els)-1)
     logger = logging.getLogger("MCDC")
     logger.debug("{}: Picking index {}/{}".format(cls.__class__.__name__, i, len(els)))
     # print("{}: Picking index {}/{}".format(cls.__class__.__name__, i, len(els)))
@@ -325,7 +325,7 @@ class LongestPath:
 
     def mkNegated(self, tc):
         m10 = copy.copy(tc)  # Quickly(?) construct partner
-        tc_x_orig_keys = m10.origs - filter(lambda x: x.uniqid > self.c.uniqid, m10.origs)
+        tc_x_orig_keys = m10.origs - set(filter(lambda x: x.uniqid > self.c.uniqid, m10.origs))
         m10[self.c] = negate(m10[self.c])
         f_m10 = self.f.restrict(m10)
         m10.origs = tc_x_orig_keys.union(f_m10.inputs)
@@ -487,6 +487,11 @@ def order_path_pair(path_a, path_b, pb):
 
 def find_existing_candidates(f, c, test_case_pairs):
     # type: (BinaryDecisionDiagram, BDDVariable, dict) -> list
+
+    def unsatisfy_all(f):
+        for path in _iter_all_paths(f.node, BDDNODEZERO):
+            yield _path2point(path)
+
     def filtered_restrict(f, tc):
         filtered_tc = {key: val for key, val in tc.items() if val is not None}
         return f.restrict(filtered_tc)
@@ -510,22 +515,35 @@ def find_existing_candidates(f, c, test_case_pairs):
             # So f.restrict(tc) != f.restrict(tc_x) is not enough for adding (tc, tc_x) as candidate
             # to the 'candidates' list. We have to ensure that the result of the evaluation is 0/1.
             val_2 = filtered_restrict(f, tc_x)
-            tc_x.origs = tc_x_orig_keys.union(val_2.inputs)
-            # if not b:
-            #    for res in val_2.satisfy_all():
-            #        yield ...
-            # else:
-            #    Or negate?
-            #    def satisfy_all(self):
-            #        for path in _iter_all_paths(self.node, BDDNODEZERO):
-            #            yield _path2point(path)
-            if val_1 != val_2 and {val_1, val_2} == {BDDNODEZERO, BDDNODEONE}:
-                # Add the test cases for condition 'c'
-                if b:
-                    cand = (tc_x, tc.copy())
+            assert (val_1.is_zero() and not b) or (val_1.is_one() and b), "{0} {1}".format(val_1, b)
+            if not b:
+                if val_2.is_one():
+                    tc_x.origs = tc_x_orig_keys
+                    yield (tc, tc_x)
                 else:
-                    cand = (tc.copy(), tc_x)
-                yield cand
+                    for res in val_2.satisfy_all():
+                        val_2.restrict(res)
+                        if val_2.is_one():
+                            print("res: {0}".format(res))
+                            tc_0 = Path(dict(tc).update(res))
+                            tc_0.origs = tc.origs
+                            tc_1 = Path(dict(tc_x).update(res))
+                            tc_1.origs = tc_x_orig_keys.union(res.keys())
+                            yield (tc_0, tc_1)
+            else:
+                if val_2.is_zero():
+                    tc_x.origs = tc_x_orig_keys
+                    yield (tc_x, tc)
+                else:
+                    for res in unsatisfy_all(val_2):
+                        val_2.restrict(res)
+                        if val_2.is_zero():
+                            print("res: {0}".format(res))
+                            tc_0 = Path(dict(tc_x).update(res))
+                            tc_0.origs = tc_x_orig_keys.union(res.keys())
+                            tc_1 = Path(dict(tc).update(res))
+                            tc_1.origs = tc.origs
+                            yield (tc_0, tc_1)
     return
 
 
