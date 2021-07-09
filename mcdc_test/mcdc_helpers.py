@@ -1,4 +1,11 @@
+import sys
 from functools import reduce
+
+
+def set_tcs(p0, p1, f, c, tcs):
+    assert f.restrict(p0).is_zero()
+    assert f.restrict(p1).is_one(), f.restrict(p1)
+    tcs[c] = (p0.copy(), p1.copy())
 
 
 def better_size(tcs, pairs):
@@ -272,7 +279,7 @@ def replace_final_question_marks(test_case):
     return have_warned
 
 
-def stabilize(test_case):
+def stabilize(test_case, f):
     # type: (dict) -> None
 
     # test_case[a] = ({a: 0, b: None, c: 0}, {a: 1, b: 1, c: None})
@@ -293,6 +300,10 @@ def stabilize(test_case):
 
             # Replace '?' in path_zero by the value in path_one for the same condition c, and viceversa
             merge(path_zero, path_one)
+            x0 = f.restrict(path_zero)
+            x1 = f.restrict(path_one)
+            assert x0.is_zero(), (cond, x0, "is_zero")
+            assert x1.is_one(), (cond, x1, "is_one")
 
         # Q: what does it happen if path_0[j] == path_1[j] == "?"?
         # path_zero = {a: 0, b: None, c: 0}
@@ -302,8 +313,8 @@ def stabilize(test_case):
         # TODO: Why is a comment about `propagate` here in `stabilize`?!
 
 
-def propagate(test_case):
-    # type: (dict) -> dict
+def propagate(test_case, f):
+    # type: (dict, BinaryDecisionDiagram) -> dict
 
     # test_case[a] = ({a: 0, b: None, c: 0}, {a: 1, b: None, c: 1})
     # test_case[b] = ({a: 1, b: 0, c: None}, {a: 1, b: 1, c: None})
@@ -348,7 +359,9 @@ def propagate(test_case):
         path_zero, path_one = test_case[cond]
         # path_zero = {a: 0, b: None, c: 0}
         # path_one = {a: 1, b: 1, c: None}
-        tc_out[cond] = (path_zero, path_one)
+        # tc_out[cond] = (path_zero, path_one)
+        print("a " + lrlr(conditions, path_one), file=sys.stderr)
+        set_tcs(path_zero, path_one, f, cond, tc_out)
         if has_none(path_zero):
             # calculate merge with every other (fitting) path, count remaining "?". Pick lowest.
             # TODO(?): We don't care for now that we're merging with ourselves.
@@ -360,7 +373,9 @@ def propagate(test_case):
                 assert count_none(bestMatch) <= count_none(path_zero)
                 # TODO: This is just sloppy, we want to make a copy but are updating in place.
                 merge(bestMatch, path_one)
-                tc_out[cond] = (bestMatch, path_one)
+                print("b " + lrlr(conditions, path_one), file=sys.stderr)
+                # tc_out[cond] = (bestMatch, path_one)
+                set_tcs(bestMatch, path_one, f, cond, tc_out)
 
         # Now do the same for paths to True:
         if has_none(path_one):
@@ -373,10 +388,12 @@ def propagate(test_case):
                 assert count_none(bestMatch) <= count_none(path_one)
                 # TODO: This is just sloppy, we want to make a copy but are updating in place.
                 merge(bestMatch, tc_out[cond][0])
-                tc_out[cond] = (tc_out[cond][0], bestMatch)  # Ugh
+                # tc_out[cond] = (tc_out[cond][0], bestMatch)  # Ugh
+                set_tcs(tc_out[cond][0], bestMatch, f, cond, tc_out)
 
         assert count_none(tc_out[cond][0]) <= count_none(path_zero)
         assert count_none(tc_out[cond][1]) <= count_none(path_one)
+
     return tc_out
 
 
@@ -392,7 +409,7 @@ def negate(bit):
     return (bit + 1) % 2
 
 
-def instantiate(test_case):
+def instantiate(test_case, f):
     # type: (dict) -> dict
 
     # test_case[a] = ({a: 0, b: None, c: 0}, {a: 1, b: 1, c: None})
@@ -407,7 +424,7 @@ def instantiate(test_case):
     # [a2 b2 c2 | a2 b2 !c2]
 
     # Synchronize p0 and p1 for each row, so that they only differ in one position (e.g., a0 vs !a0)
-    stabilize(test_case)
+    stabilize(test_case, f)
     # Propagate values in the diagonal to instantiate "?"s across test cases
     # num_conditions = len(test_case.keys())
     # for i in range(num_conditions):
@@ -415,13 +432,13 @@ def instantiate(test_case):
     #     # TODO: is only once at the end enough?
     #     stabilize(test_case)
 
-    new_test_case = propagate(test_case)
-    stabilize(new_test_case)
+    new_test_case = propagate(test_case, f)
+    stabilize(new_test_case, f)
     while new_test_case != test_case:
         test_case = new_test_case
-        new_test_case = propagate(test_case)
+        new_test_case = propagate(test_case, f)
         # TODO: is only once at the end enough?
-        stabilize(new_test_case)
+        stabilize(new_test_case, f)
 
 
     return test_case

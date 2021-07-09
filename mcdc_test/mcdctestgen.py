@@ -171,6 +171,8 @@ def satisfy_mcdc(f, heuristic, _rng):
     # test_case, tuple_2_dict = select_paths_bdd(self)
 
     test_case = select_paths_bdd(f)
+    assert f.restrict(test_case[0]).is_zero(), "t"
+    assert f.restrict(test_case[1]).is_one(), "j"
 
     # psi = compact_truth_table(test_case, tuple_2_dict)
     # psi[p0] = {a, c}, where tuple_2_dict(p0) = {a: 0, b: None, c: 0}
@@ -178,7 +180,7 @@ def satisfy_mcdc(f, heuristic, _rng):
 
     # Second loop
     # Instantiate '?' for each path in test_case
-    test_case = instantiate(test_case)
+    test_case = instantiate(test_case, f)
     replace_final_question_marks(test_case)
     uniq_test = unique_tests(test_case)
     # TODO: num_test_cases is kind of redundant
@@ -454,7 +456,7 @@ def run_experiment(rounds_config, hs, tcas, tcas_num_cond, mechanism):
         # Design considerations: we don't want to depend on the content of `tcasii.tcas`, but take this as a parameter.
         # BDDs are not picklable and hence unsuitable for MP, so we reconstitute BDDs via strings in pool members.
         # We only do that once and create a pool that we reuse multiple times.
-        num_proc = 4
+        num_proc = 1
         with Pool(num_proc, initializer=init_globals,
                   initargs=(maxRounds, list(map(lambda x: str(bdd2expr(x)), tcas)), tcas_num_cond, mechanism)) as p:
             # BDDs ain't picklable, so we pass the index, not the BDD:

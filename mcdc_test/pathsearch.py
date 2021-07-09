@@ -17,7 +17,7 @@ import tcasii
 from comparePlotResults import compareresult, results_better, results_better_n_plus_1
 from vsplot import plot
 from mcdctestgen import run_experiment, calc_reuse, calc_may_reuse
-from pyeda.boolalg.bdd import _path2point, BDDNODEZERO, BDDNODEONE, BDDZERO, BDDONE, _iter_all_paths
+from pyeda.boolalg.bdd import _path2point, BDDNODEZERO, BDDNODEONE, BDDZERO, BDDONE, _iter_all_paths, bdd2expr
 from mcdc_helpers import uniformize, merge, instantiate, unique_tests, size, merge_Maybe_except_c, negate, \
     is_uniformized, lrlr, xor, replace_final_question_marks, better_size, better_size2
 
@@ -498,35 +498,26 @@ def find_existing_candidates(f, c, test_case_pairs):
             # So f.restrict(tc) != f.restrict(tc_x) is not enough for adding (tc, tc_x) as candidate
             # to the 'candidates' list. We have to ensure that the result of the evaluation is 0/1.
             val_1 = f.restrict(tc)
-            assert (val_1.is_zero() and not b) or (val_1.is_one() and b)
+            assert (val_1.is_zero() and not b) or (val_1.is_one() and b), "{0} {1}".format(val_1, b)
             val_2 = f.restrict(tc_x)
             if not b:
                 if val_2.is_one():
-                    yield (tc.copy(), tc_x)
+                    yield (tc.copy(), tc_x.copy())
                 else:
                     for res in val_2.satisfy_all():
                         val_2.restrict(res)
                         if val_2.is_one():
-                            # yield (tc_x + res, tc + res)
                             print("res: {0}".format(res))
-                            yield (tc_x.update(res), tc.update(res))
+                            yield (dict(tc).update(res), dict(tc_x).update(res))
             else:
                 if val_2.is_zero():
-                    yield (tc_x, tc.copy())
+                    yield (tc_x.copy(), tc.copy())
                 else:
                     for res in unsatisfy_all(val_2):
                         val_2.restrict(res)
                         if val_2.is_zero():
                             print("res: {0}".format(res))
-                            yield (tc.update(res), tc_x.update(res))
-
-            # if val_1 != val_2 and {val_1, val_2} == {BDDNODEZERO, BDDNODEONE}:
-            #     # Add the test cases for condition 'c'
-            #     if b:
-            #         cand = (tc_x, tc.copy())
-            #     else:
-            #         cand = (tc.copy(), tc_x)
-            #     yield cand
+                            yield (dict(tc_x).update(res), dict(tc).update(res))
     return
 
 
@@ -658,9 +649,12 @@ def run_one_pathsearch(f, reuse_h, rng):
         #   you may e.g. pick a random one here.
         want_reconsider = reuse_strategy.reconsider_best_of_the_worst(test_case_pairs)
         if want_reconsider is not None:
+            assert want_reconsider[0] != want_reconsider[1]
+            assert f.restrict(want_reconsider[0]).is_zero(), lrlr(fs, want_reconsider[0])
+            assert f.restrict(want_reconsider[1]).is_one(), lrlr(fs, want_reconsider[1])
             test_case_pairs[c] = want_reconsider
         # The current test case MAY have been derived from an existing one, so we should specialise.
-        test_case_pairs = instantiate(test_case_pairs)
+        test_case_pairs = instantiate(test_case_pairs, f)
         # Note: there was no guarantee yet if the pair is fully merged, the heuristics should make sure.
     assert len(test_case_pairs.keys()) == len(f.inputs), "obvious ({})".format(len(test_case_pairs.keys()))
     # Lifted from bdd.py:
