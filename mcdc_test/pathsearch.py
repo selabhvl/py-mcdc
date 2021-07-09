@@ -479,12 +479,16 @@ def order_path_pair(path_a, path_b, pb):
 
 def find_existing_candidates(f, c, test_case_pairs):
     # type: (BinaryDecisionDiagram, BDDVariable, dict) -> list
+    def filtered_restrict(f, tc):
+        filtered_tc = {key: val for key, val in tc.items() if val is not None}
+        return f.restrict(filtered_tc)
+
     # Get a unique instance for each test case that we have generated until now
     test_cases_to_false = [(p0, False) for (p0, _) in test_case_pairs.values()]
     test_cases_to_true = [(p1, True) for (_, p1) in test_case_pairs.values()]
     test_cases = test_cases_to_true + test_cases_to_false
     for tc, b in test_cases:
-        val_1 = f.restrict(tc)  # assert only
+        val_1 = filtered_restrict(f, tc)  # assert only
         assert (val_1.is_zero() and not b) or (val_1.is_one() and b), (val_1, b)
         # tc[c] = 0/1 or None
         if tc[c] is not None:
@@ -494,7 +498,7 @@ def find_existing_candidates(f, c, test_case_pairs):
             # f.restrict(tc) may return 0/1 or a new restricted BDD
             # So f.restrict(tc) != f.restrict(tc_x) is not enough for adding (tc, tc_x) as candidate
             # to the 'candidates' list. We have to ensure that the result of the evaluation is 0/1.
-            val_2 = f.restrict(tc_x)
+            val_2 = filtered_restrict(f, tc_x)
             # if not b:
             #    for res in val_2.satisfy_all():
             #        yield ...
@@ -619,7 +623,7 @@ def run_one_pathsearch(f, reuse_h, rng):
         assert is_subset(c, llist_1, llist_2, test_case_pairs), \
             "Not a proper subset: {0}".format([(lrlr(fs, pair[0]), lrlr(fs, pair[1])) for pair in dif])
 
-        # XXX result = result_ex_cand if len(llist_1) > 0 else result
+        result = result_ex_cand if len(llist_1) > 0 else result
 
         # Actually: Or is it even stronger? All of those in the original approach that have reuse > 0 are EXACTLY José's!
         # TODO: assert that all OTHER old results have reuse = 0.
