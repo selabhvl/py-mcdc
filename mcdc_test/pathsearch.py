@@ -725,7 +725,7 @@ if __name__ == "__main__":
         return result_vec
 
     ls = list(map(only_nplus1, plot_data))
-    print(results_better(ls))
+    print(results_better(ls))  # TODO: Probably incorrect. `results_better` uses <=, but n+1 should use >=.
     print(results_better_n_plus_1(ls, tcasii.tcas_num_cond))
 
     for (hi, resultMap), t in zip(plot_data, t_list):

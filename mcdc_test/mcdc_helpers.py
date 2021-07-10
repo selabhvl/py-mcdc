@@ -18,11 +18,14 @@ class Path(dict):
 def better_size(tcs, pairs):
     # type: (dict, tuple) -> int
     # |(conditions(p0) ∪ conditions(p1))\conditions(tcs)|
+    # The idea is that if the pair has more conditions that we might
+    # still use in the future, then it's better.
+    # We take the underlying paths, though, since an instantiated "?"
+    # cannot help us make a useful path.
 
     def conditions(pi):
-        # type: (dict) -> set
-        # returns all the conditions c where pi[c] != '?'
-        return {c for c in pi.keys() if pi[c] is not None}
+        # type: (Path) -> set
+        return pi.origs
 
     def conditions_tcs(tcs):
         # type: (dict) -> set
@@ -43,9 +46,9 @@ def better_size2(tcs, pairs):
     # |(conditions(p0) \ conditions(tcs)| + |(conditions(p1) \ conditions(tcs)|
 
     def conditions(pi):
-        # type: (dict) -> set
+        # type: (Path) -> set
         # returns all the conditions c where pi[c] != '?'
-        return {c for c in pi.keys() if pi[c] is not None}
+        return pi.origs
 
     def conditions_tcs(tcs):
         # type: (dict) -> set
@@ -437,6 +440,5 @@ def instantiate(test_case):
         new_test_case = propagate(test_case)
         # TODO: is only once at the end enough?
         stabilize(new_test_case)
-
 
     return test_case
