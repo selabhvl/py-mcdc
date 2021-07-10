@@ -418,7 +418,7 @@ class LongestBoolMay(LongestMayMerge):
             # `calc_may_reuse()` is much slower then just `calc_reuse()`.
             r0 = calc_may_reuse(path[0], test_case_pairs)
             r1 = calc_may_reuse(path[1], test_case_pairs)
-            return (not(r0 > 0 and r1 > 0), -r0 - r1,
+            return (not(r0 > 0 and r1 > 0), not (r0 + r1 > 0),
                  # highest reuse/longest path
                  -path[0].size() - path[1].size())
         el = random_ranked(self, self.rng, self.pool, rank)
