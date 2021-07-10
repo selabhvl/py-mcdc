@@ -325,7 +325,7 @@ class LongestPath:
 
     def mkNegated(self, tc):
         m10 = copy.copy(tc)  # Quickly(?) construct partner
-        tc_x_orig_keys = m10.origs - set(filter(lambda x: x.uniqid > self.c.uniqid, m10.origs))
+        tc_x_orig_keys = {x for x in m10.origs if x.uniqid <= self.c.uniqid}
         m10[self.c] = negate(m10[self.c])
         f_m10 = self.f.restrict(m10)
         m10.origs = tc_x_orig_keys.union(f_m10.inputs)
@@ -508,13 +508,12 @@ def find_existing_candidates(f, c, test_case_pairs):
             # Clone current test case
             tc_x = copy.copy(tc)
             assert type(tc_x) == Path
-            tc_x_orig_keys = tc_x.origs - set(filter(lambda x: x.uniqid > c.uniqid, tc_x.origs))
+            tc_x_orig_keys = {x for x in tc_x.origs if x.uniqid <= c.uniqid}
             tc_x[c] = negate(tc_x[c])
             # f.restrict(tc) may return 0/1 or a new restricted BDD
             # So f.restrict(tc) != f.restrict(tc_x) is not enough for adding (tc, tc_x) as candidate
             # to the 'candidates' list. We have to ensure that the result of the evaluation is 0/1.
             val_2 = filtered_restrict(f, tc_x)
-            assert (val_1.is_zero() and not b) or (val_1.is_one() and b), "{0} {1}".format(val_1, b)
             if not b:
                 if val_2.is_one():
                     tc_x.origs = tc_x_orig_keys
@@ -525,7 +524,7 @@ def find_existing_candidates(f, c, test_case_pairs):
                         if val_2.is_one():
                             print("res: {0}".format(res))
                             tc_0 = Path(dict(tc).update(res))
-                            tc_0.origs = tc.origs
+                            tc_0.origs = tc.origs  # we had all that we needed
                             tc_1 = Path(dict(tc_x).update(res))
                             tc_1.origs = tc_x_orig_keys.union(res.keys())
                             yield (tc_0, tc_1)

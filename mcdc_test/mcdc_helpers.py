@@ -4,10 +4,15 @@ from functools import reduce
 class Path(dict):
     def __init__(self, d):
         dict.__init__(self, d)
-        self.origs = d.keys()
+        self.origs = set()
+        # TODO: This is silly, we just did `uniformize`!
+        for (k, v) in d.items():
+            if v is not None:
+                self.origs.add(k)
 
     def size(self):
-        return sum(self[k] is not None for k in self.origs)
+        assert len({k for k in self.origs if self[k] is None}) == 0
+        return len(self.origs)
 
 
 def better_size(tcs, pairs):
