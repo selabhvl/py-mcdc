@@ -239,6 +239,28 @@ def merge_Maybe_except_c(c_excl, path_1, path_2):
     return path_out
 
 
+def merge_Maybe_except_c_bool(c_excl, path_1, path_2):
+    # type: (BDDVariable, dict, dict) -> bool
+    # Same as above, but doesn't construct anything.
+    conditions = path_1.keys()
+    for c in conditions:
+        if c == c_excl:
+            # Let's not look at this one.
+            continue
+        if (path_1[c] is None) and (path_2[c] is not None):
+            continue
+        elif (path_1[c] is not None) and (path_2[c] is None):
+            continue
+        elif (path_1[c] is None) and (path_2[c] is None):
+            continue
+        elif path_1[c] != path_2[c]:
+            return None
+        else:
+            assert path_1[c] == path_2[c]
+            continue
+    return True
+
+
 def merge_Maybe(path_1, path_2):
     return merge_Maybe_except_c(None, path_1, path_2)
 

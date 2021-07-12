@@ -348,23 +348,7 @@ class LongestPath:
         return m01, m10
 
 
-class LongestBetterSize(LongestPath):
-    def reconsider_best_of_the_worst(self, test_case_pairs):
-        def rank(path):
-            r0 = calc_reuse(path[0], test_case_pairs)
-            r1 = calc_reuse(path[1], test_case_pairs)
-            return (not(r0 > 0 and r1 > 0), -r0 - r1,
-                    # highest reuse/longest path
-                    -better_size(test_case_pairs, path)
-                    )
-        el = random_ranked(self, self.rng, self.pool, rank)
-        m01 = merge_Maybe_except_c(self.c, el[0], el[1])
-        assert m01 is not None
-        m10 = self.mkNegated(m01)
-        return m01, m10
-
-
-class LongestBetterSize2(LongestBetterSize):
+class BetterSize(LongestPath):
     def reconsider_best_of_the_worst(self, test_case_pairs):
         def rank(path):
             r0 = calc_reuse(path[0], test_case_pairs)
@@ -700,7 +684,7 @@ if __name__ == "__main__":
     seed(RNGseed)
 
     # LongestPath and LongestMayMerge seem identical.
-    hs = [LongestMayMerge, LongestPath, LongestBool, LongestBoolMay, LongestBetterSize, LongestBetterSize2, RandomReuser]
+    hs = [LongestMayMerge, LongestPath, LongestBool, LongestBoolMay, BetterSize, RandomReuser]
     # f = tcasii.makeLarge(tcasii.D1)
     # allKeys, plot_data, t_list = run_experiment((maxRounds, rngRounds), hs, [f], [len(f.inputs)], run_one_pathsearch)
     # t_list = execution time

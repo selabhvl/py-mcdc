@@ -57,7 +57,8 @@ def plot(allKeys, chart_name, resultMap, t):
         for i, (k_f, v_rm) in enumerate(resultMap.items()):
             expected_value = sum(map(lambda kv: (kv[0] - len(k_f.inputs)) * kv[1], v_rm))
             if v_rm[0][0] == len(k_f.inputs)+1:
-                label_i = str(i)+':'+str(expected_value)
+                label_i = str(i)+':'+str(v_rm[0][1])  # Print only no. of n+1s in legend
+                # label_i = str(i) + ':' + str(expected_value)
             else:
                 label_i = str(i)+':'+str(expected_value)+'*'
             ax.plot(list(csvMap.keys()), list(map(lambda v: v[i], csvMap.values())), label=label_i)

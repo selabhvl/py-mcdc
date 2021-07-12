@@ -228,18 +228,17 @@ def gen_perm_max(maxRounds, l):
 
 
 # Def. as per paper
-def calc_reuse(path, test_case):
+def calc_reuse(path, test_case_pairs):
     # for p in test_case.values():
     #   print("reuse:\t{0}".format(p))
     # tcs = map(lambda p: (merge_Maybe(conditions,path,p[0]),merge_Maybe(conditions, path, p[1])), test_case.values())
-    tcs = filter(lambda p: p[0] == path or p[1] == path, test_case.values())
+    tcs = filter(lambda p: p[0] == path or p[1] == path, test_case_pairs.values())
     return len(list(tcs))
 
 
-def calc_may_reuse(path, test_case):
-    # for p in test_case.values():
-    #   print("reuse:\t{0}".format(p))
-    tcs = filter(lambda p: merge_Maybe(path, p[0]) is not None or merge_Maybe(path, p[1]) is not None, test_case.values())
+def calc_may_reuse(path, test_case_pairs):
+    tcs = filter(lambda p: merge_Maybe_except_c_bool(None, path, p[0]) is not None
+                        or merge_Maybe_except_c_bool(None, path, p[1]) is not None, test_case_pairs.values())
     return len(list(tcs))
 
 
