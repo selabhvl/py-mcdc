@@ -390,7 +390,8 @@ def process_one(arg):
     perms = arg[1]
     h = arg[2]
     pool = arg[3]
-    thread_time = arg[4]
+    # thread_time = arg[4]
+    thread_time = Manager().list()
     ntcs = []
     # We run several rounds for each permutation, using positions from the first permutation as seed.
     # Blows numbers a bit out of the water though...
@@ -411,8 +412,11 @@ def process_one(arg):
     if len(resultMap) == 0 or len(f1.inputs) + 1 < resultMap[0][0]:
         # We didn't find any n+1 solution.
         colour = bcolors.FAIL
-    print('{}Num_Cond={}: min={}, |p|={}, {}'.format(colour, num_cond, len(f1.inputs) + 1, factorial(len(f1.inputs)),
-                                                     resultMap), bcolors.ENDC)
+    print('{}Num_Cond={}: min={}, t_avg={} |p|={}, {}'.format(colour, num_cond, len(f1.inputs) + 1
+                                                              , (sum(thread_time)/(len(perms)*rngRounds))/1e9
+                                                              , factorial(len(f1.inputs))
+                                                              , resultMap), bcolors.ENDC)
+    arg[4].extend(thread_time)  # report time up the chain
     # TODO: I don't think we need this print statement below in general, both values are included in the line above.
     if num_cond != len(f1.inputs):
         print(bcolors.WARNING + 'Decision with Masked conditions: D_' + str(i + 1), bcolors.ENDC)
