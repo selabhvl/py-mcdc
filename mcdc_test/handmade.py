@@ -6,7 +6,7 @@ D23 = a & b | b & c | c & d | d & a
 D24 = a & f & ~c & d & ~e | ~a & f & h & i & j | b & ~g & ~c & ~d & ~e | ~b & g & ~h & ~i & ~j
 D25 = b & ~g & ~c & ~d & ~e | ~a & c & d & e
 
-hdmd = [D1, D2, D3, D4, D5]
+hdmd = [D21, D22, D23, D24, D25]
 hdmd_names = ["D2"+str(i) for i in range(1, 6)]
 hdmd_num_cond = [8, 7, 4, 10, 5]
 #hdmd_dict_name = {ds_i: value for ds_i, value in zip(hdmd_names,  hdmd_num_cond)}
