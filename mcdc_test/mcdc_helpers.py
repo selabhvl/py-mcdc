@@ -96,6 +96,7 @@ def is_uniformized(path, conditions):
 
 
 def lrlr(ordered_conditions, path):
+    # type: (dict, dict) -> str
     """Prints a complete path as a binary string.
     The name is a pun on Left-Right-Left-Right...
     """

@@ -187,6 +187,7 @@ def satisfy_mcdc(f, heuristic, _rng):
 
 
 def init_globals(_runs, _tcas, _tcas_num_cond, _mechanism):
+    # type: (int, dict, int, callable) -> None
     # https://stackoverflow.com/a/28862472/60462
     global maxRounds
     global tcas
@@ -200,6 +201,7 @@ def init_globals(_runs, _tcas, _tcas_num_cond, _mechanism):
 
 
 def sample_one(l):
+    # type: (int) -> list
     have = []
     while len(have) < l:
         j = randint(0, l - 1)
@@ -209,11 +211,13 @@ def sample_one(l):
 
 
 def gen_perm(l):
+    # type: (int) -> list
     global maxRounds
     return gen_perm_max(maxRounds, l)
 
 
 def gen_perm_max(maxRounds, l):
+    # type: (int, int) -> list
     # If you're asking for more rounds than we have permutations,
     #   we'll give them all to you.
     if maxRounds >= factorial(l):
@@ -229,6 +233,7 @@ def gen_perm_max(maxRounds, l):
 
 # Def. as per paper
 def calc_reuse(path, test_case_pairs):
+    # type: (dict, dict) -> int
     # for p in test_case.values():
     #   print("reuse:\t{0}".format(p))
     # tcs = map(lambda p: (merge_Maybe(conditions,path,p[0]),merge_Maybe(conditions, path, p[1])), test_case.values())
@@ -237,12 +242,14 @@ def calc_reuse(path, test_case_pairs):
 
 
 def calc_may_reuse(path, test_case_pairs):
+    # type: (dict, dict) -> int
     tcs = filter(lambda p: merge_Maybe_except_c_bool(None, path, p[0]) is not None
                         or merge_Maybe_except_c_bool(None, path, p[1]) is not None, test_case_pairs.values())
     return len(list(tcs))
 
 
 def hi_reuse_short_path(tcs, c, paths_to_zero, paths_to_one):
+    # type: (dict, BDDVariable, list, list) -> list
     cartesian_product = product(paths_to_zero, paths_to_one)
 
     # Choose path_zero and path_one that only differs on condition c
@@ -254,6 +261,7 @@ def hi_reuse_short_path(tcs, c, paths_to_zero, paths_to_one):
 
 
 def hi_reuse_long_path(tcs, c, paths_to_zero, paths_to_one):
+    # type: (dict, BDDVariable, list, list) -> list
     cartesian_product = product(paths_to_zero, paths_to_one)
 
     # Choose path_zero and path_one that only differs on condition c
@@ -265,6 +273,7 @@ def hi_reuse_long_path(tcs, c, paths_to_zero, paths_to_one):
 
 
 def hi_reuse_long_merged_path(tcs, c, paths_to_zero, paths_to_one):
+    # type: (dict, BDDVariable, list, list) -> list
     cartesian_product = product(paths_to_zero, paths_to_one)
 
     # Choose path_zero and path_one that only differs on condition c
@@ -276,6 +285,7 @@ def hi_reuse_long_merged_path(tcs, c, paths_to_zero, paths_to_one):
 
 
 def h3(tcs, c, paths_to_zero, paths_to_one):
+    # type: (dict, BDDVariable, list, list) -> list
     # Not "very good", e.g. can't find optimal solution in general, here D3:
     #    Num_Cond=7: min=8, |p|=5040, [(9, 5040)]
     cartesian_product = product(paths_to_zero, paths_to_one)
@@ -287,6 +297,7 @@ def h3(tcs, c, paths_to_zero, paths_to_one):
 
 
 def h3s(tcs, c, paths_to_zero, paths_to_one):
+    # type: (dict, BDDVariable, list, list) -> list
     # Try to improve over H3 by pre-sorting. Ideally, we'd want to build the product "diagonally".
     # Shortest path/highest reuse
     # Still "meh" (of course[*]) as in "does not find n+1 at all": Num_Cond=7: min=8, |p|=5040, [(9, 5040)]
@@ -303,6 +314,7 @@ def h3s(tcs, c, paths_to_zero, paths_to_one):
 
 
 def h3h(tcs, c, paths_to_zero, paths_to_one):
+    # type: (dict, BDDVariable, list, list) -> list
     # highest reuse/shortest path
     # Still fails D3
     paths_to_zero = SortedList(paths_to_zero, key=lambda path: (-calc_reuse(path, tcs), size(path)))
@@ -316,6 +328,7 @@ def h3h(tcs, c, paths_to_zero, paths_to_one):
 
 
 def h3hl(tcs, c, paths_to_zero, paths_to_one):
+    # type: (dict, BDDVariable, list, list) -> list
     # highest reuse/longest path
     # Still fails D3
     paths_to_zero = SortedList(paths_to_zero, key=lambda path: (-calc_reuse(path, tcs), -size(path)))
@@ -328,6 +341,7 @@ def h3hl(tcs, c, paths_to_zero, paths_to_one):
 
 
 def processFP_with_time(args):
+    # type: (list) -> int
     tic = time.process_time_ns()
     i = args[0]
     p = args[1]
@@ -342,6 +356,7 @@ def processFP_with_time(args):
 
 
 def paths_from_pair_is_reused(tcs, pair):
+    # type: (dict, (dict, dict)) -> bool
     """Each path occurs only once, exactly for the pair we're looking at,
        hence sum of reuse is larger than 2 (1 each).
     """
@@ -351,6 +366,7 @@ def paths_from_pair_is_reused(tcs, pair):
 
 
 def processFP(i, p, heuristic, rng):
+    # type: () -> int
     global mechanism
     f1 = tcas[i]  # Back into the global data (MP)
     fresh_var = 'f'  # apparently there's something weird going on if this name is used before, eg. in tcasii
@@ -383,6 +399,8 @@ def processFP(i, p, heuristic, rng):
 
 
 def process_one(arg):
+    # type: ((int, (BinaryDecisionDiagram, int), int, Pool, list)) -> (set, list)
+    # enumerate(zip(tcas, tcas_num_cond)), perms, repeat(h), repeat(p), repeat(thread_time))
     results = {}
     i, (f1, num_cond) = (arg[0][0], (arg[0][1][0], arg[0][1][1]))
     # Pity that with mp we can't share/reuse perms without more complications.
@@ -428,11 +446,13 @@ def process_one(arg):
 
 
 def run_experiment(rounds_config, hs, tcas, tcas_num_cond, mechanism):
+    # type: ((int, int), dict, dict, int, callable) -> (set, List[Tuple[int, dict]], List[float])
     global maxRounds
     global rngRounds
     resultMapx = None  # Python doesn't do functional `reduce()` below, but destructive:
 
     def red(acc, val):
+        # type: (set, (set, list)) -> set
         resultMapx.append(val[1])
         return acc.union(val[0])
 
