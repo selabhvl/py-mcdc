@@ -5,28 +5,26 @@ import itertools
 import logging
 import sys
 import functools
-from functools import reduce
-from itertools import chain, product, repeat, accumulate, takewhile
-from random import randint, seed, Random
-from typing import Dict
+from itertools import chain, repeat, accumulate, takewhile
+from random import seed
+from typing import List
 
-from graphviz import Source
 from matplotlib import pyplot as plt
-from more_itertools import partition
 from sortedcontainers import SortedList
 
 import tcasii
-from comparePlotResults import compareresult, results_better, results_better_n_plus_1
+from comparePlotResults import results_better, results_better_n_plus_1
 from vsplot import plot
 from mcdctestgen import run_experiment, calc_reuse, calc_may_reuse
 from pyeda.boolalg.bdd import _path2point, BDDNODEZERO, BDDNODEONE, BDDZERO, BDDONE, _iter_all_paths, bdd2expr
-from mcdc_helpers import uniformize, merge, instantiate, unique_tests, size, merge_Maybe_except_c, negate, \
-    is_uniformized, lrlr, xor, replace_final_question_marks, better_size, better_size2, Path
+from mcdc_helpers import uniformize, instantiate, unique_tests, size, merge_Maybe_except_c, negate, \
+    lrlr, xor, replace_final_question_marks, better_size2, Path
 
 logger = None  # lazy
 
 
 def bfs_upto_c(f, c):
+    # type: (BinaryDecisionDiagram, BDDNode) -> (List[BDDNode], BDDNode)
     """Iterate through nodes in BFS order."""
     queue = collections.deque()
     queue.append(([f.node], f.node))
@@ -48,6 +46,7 @@ def bfs_upto_c(f, c):
 
 
 def memoized_generator(f):
+    # type: (BinaryDecisionDiagram) -> callable
     # https://stackoverflow.com/a/53437323/60462
     cache = {}
 
@@ -62,6 +61,7 @@ def memoized_generator(f):
 
 # @memoized_generator
 def terminals_via_bfs_from(node):
+    # type: (BDDNode) -> ((List[BDDNode], List[BDDNode, bool]), BDDNode)
     # Pushed down `terms`, since it was constant anyway and couldn't be @cached.
     terms = {BDDNODEZERO, BDDNODEONE}
     assert len(terms) >= 1 or len(terms) <= 2
@@ -85,7 +85,10 @@ def terminals_via_bfs_from(node):
 
 # @memoized_generator
 def pairs_from_node(f, v_c):
+    # type: (BinaryDecisionDiagram, BDDNode) -> _
     def _check_monotone(acc, t):
+        # type: ((int, _), (List[BDDNode], BDDNode)) -> (int, BDDNode)
+        # ((List[BDDNode], List[BDDNode, bool]), BDDNode)
         lt = len(t[0][0])
         res = lt >= acc[0]
         assert res
@@ -105,6 +108,7 @@ def pairs_from_node(f, v_c):
 
 
 def find_partner_from_following(f, node, terminal, path, suffix, seen_nodes_on_other_path):
+    # type: (BinaryDecisionDiagram, BDDNode, BDDNode, List[BDDNode], List[BDDNode], List[BDDNode]) -> (List[BDDNode], BDDNode)
     # TODO: is this a function or a relation?
     # `path` may or may not start at the root.
     # No point in memoizing, though, since `seen_nodes` will be unique
@@ -173,6 +177,7 @@ def find_partner_from_following(f, node, terminal, path, suffix, seen_nodes_on_o
 
 
 def ttff(node):
+    # type: (BDDNode) -> int
     if node is BDDNODEONE:
         return 1
     elif node is BDDNODEZERO:
@@ -182,6 +187,7 @@ def ttff(node):
 
 
 def independence_day_for_condition(f, v_c, t):
+    # type: (BinaryDecisionDiagram, BDDNode, tuple) -> (List[BDDNode], BDDNode)
     # Can't memoize, since `t#atoe` is always used exactly once only.
     ((atoe, suffix), terminal) = t
     if terminal is BDDNODEONE:
@@ -215,6 +221,7 @@ class UseFirst:
 
 
 def random_ranked(cls, rng, choices, rank):
+    # type: (object, list, list, callable) -> int
     """Pick some (random?) element from the best-ranked bucket."""
     assert len(choices) > 0
     the_list = SortedList(choices, key=rank)
@@ -234,6 +241,7 @@ class Reuser:
     have any, in which case you get some pair that we have looked at.
     Make special provision for the root node and take the first pair we find."""
     def __init__(self, f, c, rng):
+        # type: (BinaryDecisionDiagram, BDDVariable, callable) -> None
         # The pool transfers state across all (visited) i-pairs
         #   until `pick_best` is happy. We may then use this info
         #   to reconsider our choice.
@@ -295,7 +303,9 @@ class RandomReuser(Reuser):
         return None
 
     def reconsider_best_of_the_worst(self, test_case_pairs):
+        # type: (dict) -> (dict, dict)
         def rank(path):
+            # type: ((dict, dict)) -> bool
             r0 = calc_reuse(path[0], test_case_pairs)
             r1 = calc_reuse(path[1], test_case_pairs)
             return not (r0 > 0 and r1 > 0)
@@ -332,7 +342,9 @@ class LongestPath:
         return m10
 
     def reconsider_best_of_the_worst(self, test_case_pairs):
+        # type: (dict) -> (dict, dict)
         def rank(path):
+            # type: ((dict, dict)) -> (bool, int, int)
             r0 = calc_reuse(path[0], test_case_pairs)
             r1 = calc_reuse(path[1], test_case_pairs)
             # XXX: not always true
@@ -350,7 +362,9 @@ class LongestPath:
 
 class BetterSize(LongestPath):
     def reconsider_best_of_the_worst(self, test_case_pairs):
+        # type: (dict) -> (dict, dict)
         def rank(path):
+            # type: ((dict, dict)) -> (bool, int)
             r0 = calc_reuse(path[0], test_case_pairs)
             r1 = calc_reuse(path[1], test_case_pairs)
             return (not(r0 > 0 and r1 > 0),
@@ -365,7 +379,9 @@ class BetterSize(LongestPath):
 
 class LongestBool(LongestPath):
     def reconsider_best_of_the_worst(self, test_case_pairs):
+        # type: (dict) -> (dict, dict)
         def rank(path):
+            # type: ((dict, dict)) -> (bool, bool, int)
             r0 = calc_reuse(path[0], test_case_pairs)
             r1 = calc_reuse(path[1], test_case_pairs)
             return (not(r0 > 0 and r1 > 0), not r0 + r1 > 0,
@@ -382,13 +398,15 @@ class LongestBool(LongestPath):
 
 class LongestMayMerge(LongestPath):
     def reconsider_best_of_the_worst(self, test_case_pairs):
+        # type: (dict) -> (dict, dict)
         def rank(path):
+            # type: ((dict, dict)) -> (bool, int, int)
             # `calc_may_reuse()` is much slower then just `calc_reuse()`.
             r0 = calc_may_reuse(path[0], test_case_pairs)
             r1 = calc_may_reuse(path[1], test_case_pairs)
             return (not(r0 > 0 and r1 > 0), -r0 - r1,
-                 # highest reuse/longest path
-                 -path[0].size() - path[1].size())
+                    # highest reuse/longest path
+                    -path[0].size() - path[1].size())
         el = random_ranked(self, self.rng, self.pool, rank)
         m01 = merge_Maybe_except_c(self.c, el[0], el[1])
         assert m01 is not None
@@ -398,13 +416,15 @@ class LongestMayMerge(LongestPath):
 
 class LongestBoolMay(LongestMayMerge):
     def reconsider_best_of_the_worst(self, test_case_pairs):
+        # type: (dict) -> (dict, dict)
         def rank(path):
+            # type: ((dict, dict)) -> (bool, bool, int)
             # `calc_may_reuse()` is much slower then just `calc_reuse()`.
             r0 = calc_may_reuse(path[0], test_case_pairs)
             r1 = calc_may_reuse(path[1], test_case_pairs)
-            return (not(r0 > 0 and r1 > 0), not (r0 + r1 > 0),
-                 # highest reuse/longest path
-                 -path[0].size() - path[1].size())
+            return (not (r0 > 0 and r1 > 0), not (r0 + r1 > 0),
+                    # highest reuse/longest path
+                    -path[0].size() - path[1].size())
         el = random_ranked(self, self.rng, self.pool, rank)
         m01 = merge_Maybe_except_c(self.c, el[0], el[1])
         assert m01 is not None
@@ -415,9 +435,11 @@ class LongestBoolMay(LongestMayMerge):
 class ShortestPathMerge(LongestPath):
 
     def reconsider_best_of_the_worst(self, test_case_pairs):
+        # type: (dict) -> (dict, dict)
         def rank(path):
+            # type: ((dict, dict)) -> (int, int)
             return (size(path[0]) + size(path[1]),
-             -calc_may_reuse(path[0], test_case_pairs) - calc_may_reuse(path[1], test_case_pairs))
+                    -calc_may_reuse(path[0], test_case_pairs) - calc_may_reuse(path[1], test_case_pairs))
         el = random_ranked(self, self.rng, self.pool, rank)
         merged = (merge_Maybe_except_c(self.c, el[0], el[1]), merge_Maybe_except_c(self.c, el[1], el[0]))
         return merged
@@ -426,17 +448,21 @@ class ShortestPathMerge(LongestPath):
 class ShortestPath(LongestPath):
 
     def reconsider_best_of_the_worst(self, test_case_pairs):
+        # type: (dict) -> (dict, dict)
         def rank(path):
+            # type: ((dict, dict)) -> (int, int)
             return (-calc_reuse(path[0], test_case_pairs) - calc_reuse(path[1], test_case_pairs),
-                                                       # highest reuse/longest path
-                                                       size(path[0]) + size(path[1]))
+                    # highest reuse/longest path
+                    size(path[0]) + size(path[1]))
         return random_ranked(self, self.rng, self.pool, rank)
 
 
 class BestReuseOnly(LongestPath):
 
     def reconsider_best_of_the_worst(self, test_case_pairs):
+        # type: (dict) -> (dict, dict)
         def rank(path):
+            # type: ((dict, dict)) -> int
             return -calc_reuse(path[0], test_case_pairs) - calc_reuse(path[1], test_case_pairs)
         return random_ranked(self, self.rng, self.pool, rank)
 
@@ -444,7 +470,9 @@ class BestReuseOnly(LongestPath):
 class ShortestNoreusePath(LongestPath):
 
     def reconsider_best_of_the_worst(self, test_case_pairs):
+        # type: (dict) -> (dict, dict)
         def rank(path):
+            # type: ((dict, dict)) -> (int, int)
             (-calc_reuse(path[0], test_case_pairs) - calc_reuse(path[1], test_case_pairs),
              # highest reuse/longest path
              size(path[0]) + size(path[1]))
@@ -452,6 +480,7 @@ class ShortestNoreusePath(LongestPath):
 
 
 def order_path_pair(path_a, path_b, pb):
+    # type: (dict, dict, tuple) -> (dict, dict)
     # Just a sanity check that we didn't add duplicates.
     #  Moved out of the way for readability.
     #  Never have a node twice in a path:
@@ -471,10 +500,12 @@ def find_existing_candidates(f, c, test_case_pairs):
     # type: (BinaryDecisionDiagram, BDDVariable, dict) -> list
 
     def unsatisfy_all(f):
+        # type: (BinaryDecisionDiagram) -> iter
         for path in _iter_all_paths(f.node, BDDNODEZERO):
             yield _path2point(path)
 
     def filtered_restrict(f, tc):
+        # type: (BinaryDecisionDiagram, dict) -> BinaryDecisionDiagram
         filtered_tc = {key: val for key, val in tc.items() if val is not None}
         return f.restrict(filtered_tc)
 
@@ -530,7 +561,7 @@ def find_existing_candidates(f, c, test_case_pairs):
 
 def run_one_pathsearch(f, reuse_h, rng):
     def difference(c, list_paths_1, list_paths_2, test_case_pairs):
-        # type: (_, iter, iter, dict) -> list
+        # type: (BDDVariable, list, list, dict) -> list
         # list_paths_1 = [p0, p1]
         # list_paths_2 = [p1, p2]
         # where:
@@ -572,7 +603,7 @@ def run_one_pathsearch(f, reuse_h, rng):
         return result
 
     def is_subset(c, list_paths_1, list_paths_2, test_case_pairs):
-        # type: (iter, iter) -> bool
+        # type: (BDDVariable, list, list, dict) -> bool
         # list_paths_1 = [p0, p1]
         # list_paths_2 = [p1, p2]
         # where:
@@ -583,6 +614,7 @@ def run_one_pathsearch(f, reuse_h, rng):
         return len(difference(c, list_paths_1, list_paths_2, test_case_pairs)) == 0
 
     def uniformize_list(pa, pb):
+        # type: (tuple, tuple) -> (dict, dict)
         path_a = uniformize(_path2point(pa), f.inputs)
         path_b = uniformize(_path2point(pb[0]), f.inputs)
         # TODO: unclear why this doesn't work on pa/pb[0]
@@ -590,6 +622,7 @@ def run_one_pathsearch(f, reuse_h, rng):
         return pair
 
     def _check_monotone(acc, t):
+        # type: (iter, iter) -> (int, iter)
         lt0 = len(t[0])  # t[0]!
         res = lt0 >= acc[0]
         assert res
