@@ -62,21 +62,14 @@ python3 setup.py install --force --user
 
   `git clone https://github.com/selabhvl/py-mcdc.git`
 
-- Run the default (Only 42 permutations): 
-  `python3 mcdc_test/pathsearch.py`
-  or 
-  `python3 mcdc_test/re2.py`
+- Generate MC/DC test cases from the command line (for TCAS II specifications)
 
-- Generate MC/DC test cases from the command line
+  `python3 mcdc_test/pathsearch.py "number of permutations" "number of runs"`
 
-  `python3 mcdc_test/pathsearch.py numberofpermutations`
+- Example for 5040 order permutations and 6 runs:
 
-  or 
+  `python3 mcdc_test/pathsearch.py 5040 6`
 
-  `python3 mcdc_test/mcdctestgen.py numberofpermutations`
-- Example for 1000 order permutations:
-
-  `python3 mcdc_test/mcdctestgen.py 1000`
 
 
 
