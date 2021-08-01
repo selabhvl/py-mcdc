@@ -77,22 +77,22 @@ w = 0.12
 X = np.arange(1,21)  # the label locations
 labels =dict(zip(tcas_names,tcas_num_cond))
 #_X = np.arange(len(labels))
-plt.bar(X - 3 * w, LongestBool, w, label='LPB', color='c')
-plt.bar(X - 2 * w, Longest, w, label='LPN', color='m')
-plt.bar(X - w, LongestBoolMay, w, label='LMMB', color='y')
-plt.bar(X, LongestMayMerge, w,  label='LMMN', color='g')
+plt.bar(X - 3 * w, LongestBool1, w, label=r'$\mathcal{H}_{LPB}$', color='c')
+plt.bar(X - 2 * w, Longest1, w, label=r'$\mathcal{H}_{LPN}$', color='m')
+plt.bar(X - w, LongestBoolMay1, w, label=r'$\mathcal{H}_{LMMB}$', color='y')
+plt.bar(X, LongestMayMerge1, w,  label=r'$\mathcal{H}_{LMMN}$', color='g')
 #plt.bar(X + w, LongestBetterSize, w, label='LPBS1', color='dodgerblue')
-plt.bar(X +  w, LongestBetter2Size, w, label='LPBS', color='r')
-plt.bar(X + 2 * w, RandomReuser, w, label='RR',color='k')
+plt.bar(X +  w, LongestBetter2Size1, w, label=r'$\mathcal{H}_{LPBS}$', color='r')
+plt.bar(X + 2 * w, RandomReuser1, w, label=r'$\mathcal{H}_{RR}$',color='k')
         
 
-ax.set_title('% of n+1 solutions, permutations:5040, Runs:6')
-ax.set_ylabel('Percentage of n+1 TCs generated (%)')
+ax.set_title('% of n+2 solutions, permutations:5040, Runs:6')
+ax.set_ylabel('Percentage of n+2 TCs generated (%)')
 ax.set_xlabel('TCASII decisions')
 ax.set_xticks(X)
 ax.set_xticklabels(labels.keys(), rotation = 'vertical', fontsize=8)
 ax.legend()
-plt.savefig('pymcdc-5k-6/RESULT/Compareheuristics5040-6-1.png', dpi=150)
+plt.savefig('pymcdc-5k-6/RESULT/Compareheuristics5040-6-2.png', dpi=150)
 plt.show()
 
 # Show the plot

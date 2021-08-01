@@ -1,6 +1,13 @@
 # py-mcdc
-This project aims at generating test cases satisfying modified condition decision coverage (MC/DC) criterion based on reduced ordered decision diagrams (roBDDs)
+This project aims at generating test cases satisfying modified condition decision coverage (MC/DC) criterion based on reduced ordered decision diagrams (roBDDs).
+We propose different heuristics for selection of test cases based on longest paths in the roBDDs and all of them maximize the reuse factor:
+- longest paths and reuse factor as a natural number (<img src="https://render.githubusercontent.com/render/math?math=\mathcal{H}_{LPN}">)
+- longest paths and reuse factor as a Boolean number (<img src="https://render.githubusercontent.com/render/math?math=\mathcal{H}_{LPB}">)
+- longest paths which may merge and reuse factor as a natural number (<img src="https://render.githubusercontent.com/render/math?math=\mathcal{H}_{LMMN}">) 
+- longest paths which may merge and reuse factor as a Boolean number (<img src="https://render.githubusercontent.com/render/math?math=\mathcal{H}_{LMMB}">) 
+- longest paths with better size (<img src="https://render.githubusercontent.com/render/math?math=\mathcal{H}_{LPBS}">)
 
+Every heuristics is applied for a number of permutations of the order of the conditions and we repeat a run on a given permutation, exploring different random choices within the equivalent best pairs.
 ## Dependencies
 - python 3.8 (minimum)
 - pyeda library
@@ -19,7 +26,7 @@ This project aims at generating test cases satisfying modified condition decisio
 
 - Install the dependencies:
    `pip3 install -r requirements.txt`
-  
+ 
 <!--
 - Install latest release pyeda version using pip:
 
@@ -69,6 +76,11 @@ python3 setup.py install --force --user
 - Example for 5040 order permutations and 6 runs:
 
   `python3 mcdc_test/pathsearch.py 5040 6`
+- To generate curves with GNUplot:
+```
+gnuplot -p 'generated file.plot'
+gnuplot -p 'VS-LongestPath.11-5040-6.plot'
+```
 
 
 
