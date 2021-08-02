@@ -7,7 +7,20 @@ We propose different heuristics for selection of test cases based on longest pat
 - longest paths which may merge and reuse factor as a Boolean number (<img src="https://render.githubusercontent.com/render/math?math=\mathcal{H}_{LMMB}">) 
 - longest paths with better size (<img src="https://render.githubusercontent.com/render/math?math=\mathcal{H}_{LPBS}">)
 
-Every heuristics is applied for a number of permutations of the order of the conditions and we repeat a run on a given permutation, exploring different random choices within the equivalent best pairs.
+ The following is our setup framework:
+
+<img class="img-responsive" src="setupframework.jpg" />
+
+Our setup takes as input the roBDD for a given decision, the number of permutations, and the number of runs. 
+That is every heuristic is applied for a number of permutations of the order of the conditions and we repeat a run on a given permutation,
+exploring different random choices within the equivalent best pairs.
+The selection method refers to the different heuristics proposed.
+The benchmarks refer to the specifications written as Boolean expressions (decisions).
+You can find the TCAS II decision in mcdc_test/tcasii.py.
+MC/DC test specifications are the meaning of what is MC/DC in the context of roBDDs and three values logic.
+We consider the reuse factor in our MC/DC analysis to reuse as much as possible the existing selected TCs.
+Finally, we produce $n$ MC/DC pairs as output for each decision with the size of n+m solutions.
+
 ## Dependencies
 - python 3.8 (minimum)
 - pyeda library
@@ -26,6 +39,13 @@ Every heuristics is applied for a number of permutations of the order of the con
 
 - Install the dependencies:
    `pip3 install -r requirements.txt`
+
+- Install the Graphviz packages (usefully when you want to visualize roBDDs): 
+    
+    ```
+    apt-get update
+    apt-get install graphviz*
+    ```
  
 <!--
 - Install latest release pyeda version using pip:
@@ -46,14 +66,8 @@ python3 setup.py build
 python3 setup.py install --force --user
 ```
 
-## Generating BDDs and required dependencies
+## Generating BDDs 
 
-- Install the Graphviz packages with the following set of commands: 
-    
-    ```
-    apt-get update
-    apt-get install graphviz*
-    ```
 - To generate a BDD for a Boolean expression
     ```
     # python3
