@@ -16,7 +16,7 @@ That is every heuristic is applied for a number of permutations of the order of 
 exploring different random choices within the equivalent best pairs.
 The selection method refers to the different heuristics proposed.
 The benchmarks refer to the specifications written as Boolean expressions (decisions).
-You can find the ![TCAS II decisions](https://github.com/selabhvl/py-mcdc/blob/main/mcdc_test/tcasii.py).
+You can find the [TCAS II decisions](https://github.com/selabhvl/py-mcdc/blob/main/mcdc_test/tcasii.py).
 MC/DC test specifications are the meaning of what is MC/DC in the context of roBDDs and three values logic.
 We consider the reuse factor in our MC/DC analysis to reuse as much as possible the existing selected TCs.
 Finally, we produce n MC/DC pairs as output for each decision with the size of n+m solutions.
@@ -99,11 +99,10 @@ gnuplot -p 'generated file.plot'
 ```
 gnuplot -p 'VS-LongestBool.11-5040-6.plot'
 ```
-###Result:
+### Result:
 The figure below show the probability distribution for n+m solutions using longest paths and reuse factor as a Boolean number (<img src="https://render.githubusercontent.com/render/math?math=\mathcal{H}_{LPB}">).
-The labels indicate the decision number in the ![TCAS II decisions](https://github.com/selabhvl/py-mcdc/blob/main/mcdc_test/tcasii.py) and the number of condition contained in that specific decisions.
+The labels indicate the decision number in the [TCAS II decisions](https://github.com/selabhvl/py-mcdc/blob/main/mcdc_test/tcasii.py) and the number of condition contained in that specific decisions.
 For example 1:6 means the first decision and it contains 6 conditions. The closer the curves are to the top left the more the n+1 solutions.
-
 
 ![](./LPB.png)
 
