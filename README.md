@@ -16,10 +16,10 @@ That is every heuristic is applied for a number of permutations of the order of 
 exploring different random choices within the equivalent best pairs.
 The selection method refers to the different heuristics proposed.
 The benchmarks refer to the specifications written as Boolean expressions (decisions).
-You can find the TCAS II decision in mcdc_test/tcasii.py.
+You can find the ![TCAS II decisions](https://github.com/selabhvl/py-mcdc/blob/main/mcdc_test/tcasii.py).
 MC/DC test specifications are the meaning of what is MC/DC in the context of roBDDs and three values logic.
 We consider the reuse factor in our MC/DC analysis to reuse as much as possible the existing selected TCs.
-Finally, we produce $n$ MC/DC pairs as output for each decision with the size of n+m solutions.
+Finally, we produce n MC/DC pairs as output for each decision with the size of n+m solutions.
 
 ## Dependencies
 - python 3.8 (minimum)
