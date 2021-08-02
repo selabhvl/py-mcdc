@@ -9,7 +9,7 @@ We propose different heuristics for selection of test cases based on longest pat
 
  The following is our setup framework:
 
-![Setup framwork](./setupframework.jpg)
+![](./setupframework.jpg)
 
 Our setup takes as input the roBDD for a given decision, the number of permutations, and the number of runs. 
 That is every heuristic is applied for a number of permutations of the order of the conditions and we repeat a run on a given permutation,
