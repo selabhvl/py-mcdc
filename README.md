@@ -40,7 +40,7 @@ Finally, we produce $n$ MC/DC pairs as output for each decision with the size of
 - Install the dependencies:
    `pip3 install -r requirements.txt`
 
-- Install the Graphviz packages (usefully when you want to visualize roBDDs): 
+- Install the Graphviz packages (useful when you want to visualize roBDDs): 
     
     ```
     apt-get update
@@ -59,7 +59,7 @@ Finally, we produce $n$ MC/DC pairs as output for each decision with the size of
   `git clone git://github.com/cjdrake/pyeda.git`
 -->
 
-Build:
+##Build
 ```
 python3 setup.py clean --all
 python3 setup.py build
@@ -92,7 +92,11 @@ python3 setup.py install --force --user
   `python3 mcdc_test/pathsearch.py 5040 6`
 - To generate curves with GNUplot:
 ```
-gnuplot -p 'generated file.plot'
+gnuplot -p 'generated file.plot' 
+```
+
+Example: 
+```
 gnuplot -p 'VS-LongestPath.11-5040-6.plot'
 ```
 
