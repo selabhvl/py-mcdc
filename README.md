@@ -26,7 +26,7 @@ Finally, we produce n MC/DC pairs as output for each decision with the size of n
 - pyeda library
 - Graphviz packages
 
-## Installing Dependencies
+## Installing Dependencies & Build
 - Install the Python3 "development" package.
 
   For Debian-based systems (eg Ubuntu, Mint):
@@ -59,12 +59,12 @@ Finally, we produce n MC/DC pairs as output for each decision with the size of n
   `git clone git://github.com/cjdrake/pyeda.git`
 -->
 
-##Build
-```
-python3 setup.py clean --all
-python3 setup.py build
-python3 setup.py install --force --user
-```
+- Build
+  ```
+  python3 setup.py clean --all
+  python3 setup.py build
+  python3 setup.py install --force --user
+  ```
 
 ## Generating BDDs 
 
@@ -87,7 +87,7 @@ python3 setup.py install --force --user
 
   `python3 mcdc_test/pathsearch.py "number of permutations" "number of runs"`
 
-- Example for 5040 order permutations and 6 runs:
+- Example for 5040 order permutations and 6 runs (It takes very long time for high number of permutations, You can use few number permutations to try it first (for example 5)):
 
   `python3 mcdc_test/pathsearch.py 5040 6`
 - To generate curves with GNUplot:
@@ -95,10 +95,17 @@ python3 setup.py install --force --user
 gnuplot -p 'generated file.plot' 
 ```
 
-Example: 
+- Example: 
 ```
-gnuplot -p 'VS-LongestPath.11-5040-6.plot'
+gnuplot -p 'VS-LongestBool.11-5040-6.plot'
 ```
+###Result:
+The figure below show the probability distribution for n+m solutions using longest paths and reuse factor as a Boolean number (<img src="https://render.githubusercontent.com/render/math?math=\mathcal{H}_{LPB}">).
+The labels indicate the decision number in the ![TCAS II decisions](https://github.com/selabhvl/py-mcdc/blob/main/mcdc_test/tcasii.py) and the number of condition contained in that specific decisions.
+For example 1:6 means the first decision and it contains 6 conditions. The closer the curves are to the top left the more the n+1 solutions.
+
+
+![](./LPB.png)
 
 
 
